@@ -14,8 +14,8 @@ import org.json.JSONObject
 
 class AuthenticationApiClient(
     private val config: AppConfig,
-) {
-    suspend fun login(credentials: AdminLoginCredentials): OperationResult<AuthenticationSession> =
+) : AuthenticationApi {
+    override suspend fun login(credentials: AdminLoginCredentials): OperationResult<AuthenticationSession> =
         execute(
             method = "POST",
             path = "/api/v1/auth/admin/login",
@@ -27,7 +27,7 @@ class AuthenticationApiClient(
             parseSession(json)
         }
 
-    suspend fun refresh(session: AuthenticationSession): OperationResult<AuthenticationSession> =
+    override suspend fun refresh(session: AuthenticationSession): OperationResult<AuthenticationSession> =
         execute(
             method = "POST",
             path = "/api/v1/auth/admin/refresh",
@@ -44,7 +44,7 @@ class AuthenticationApiClient(
             )
         }
 
-    suspend fun current(session: AuthenticationSession): OperationResult<AuthenticatedAdmin> =
+    override suspend fun current(session: AuthenticationSession): OperationResult<AuthenticatedAdmin> =
         execute(
             method = "GET",
             path = "/api/v1/auth/admin/me",
@@ -53,7 +53,7 @@ class AuthenticationApiClient(
             parseAdmin(json.getJSONObject("data").getJSONObject("admin"))
         }
 
-    suspend fun logout(session: AuthenticationSession): OperationResult<Unit> =
+    override suspend fun logout(session: AuthenticationSession): OperationResult<Unit> =
         execute(
             method = "POST",
             path = "/api/v1/auth/admin/logout",

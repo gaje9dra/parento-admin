@@ -4,9 +4,10 @@ import com.parento.admin.domain.ManagedDevice
 import com.parento.admin.domain.OperationResult
 
 /**
- * Future local persistence boundary for cached application state.
+ * Legacy Phase 1 contract for future managed-device caching.
  *
- * Phase 1.2 deliberately does not persist credentials or implement a database.
+ * Phase 2.1 does not persist managed-device business records. The concrete
+ * Room persistence foundation is provided by LocalStateRepository.
  */
 interface LocalDataStore {
     fun readManagedDevices(): OperationResult<List<ManagedDevice>>

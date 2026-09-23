@@ -53,6 +53,12 @@ data class AppConfig(
         require(uri.host != null) {
             "Backend base URL must contain a valid host."
         }
+        require(uri.path.isNullOrEmpty() || uri.path == "/") {
+            "Backend base URL must not contain a path."
+        }
+        require(uri.query == null && uri.fragment == null) {
+            "Backend base URL must not contain query or fragment data."
+        }
 
         if (security.requireHttps) {
             require(uri.scheme == "https") {

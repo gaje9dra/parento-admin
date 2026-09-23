@@ -10,7 +10,10 @@ object LocalDatabaseFactory {
             ParentoAdminDatabase::class.java,
             DATABASE_NAME,
         )
-            .addMigrations(ParentoAdminDatabase.MIGRATION_1_2)
+            .addMigrations(
+                ParentoAdminDatabase.MIGRATION_1_2,
+                ParentoAdminDatabase.MIGRATION_2_3,
+            )
             .build()
 
     private const val DATABASE_NAME = "parento-admin.db"

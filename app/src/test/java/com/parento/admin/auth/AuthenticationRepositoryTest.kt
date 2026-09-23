@@ -327,7 +327,7 @@ private class FakeApi(
         session: AuthenticationSession,
     ): OperationResult<AuthenticatedAdmin> {
         currentCalls += 1
-        return if (currentCalls > 1) currentAfterRefresh else currentResult
+        return if (refreshCalls > 0) currentAfterRefresh else currentResult
     }
 
     override suspend fun logout(

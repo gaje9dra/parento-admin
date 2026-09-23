@@ -21,8 +21,13 @@ class AuthenticationRepositoryImpl(
 
         return when (val result = api.login(credentials)) {
             is OperationResult.Success -> {
-                secureStore.saveSession(result.value)
-                OperationResult.Success(result.value.admin)
+                if (result.value.admin.status != ACTIVE_STATUS) {
+                    secureStore.clearSession()
+                    OperationResult.Failure(AdminError.AccountDisabled)
+                } else {
+                    secureStore.saveSession(result.value)
+                    OperationResult.Success(result.value.admin)
+                }
             }
             is OperationResult.Failure -> {
                 secureStore.clearSession()
@@ -36,7 +41,10 @@ class AuthenticationRepositoryImpl(
             ?: return OperationResult.Success(Unit)
 
         val backendResult = api.logout(session)
+        // Local logout is authoritative for this installation. Network success is
+        // not required before stale credentials are removed locally.
         secureStore.clearSession()
+
         return when (backendResult) {
             is OperationResult.Success -> OperationResult.Success(Unit)
             is OperationResult.Failure -> OperationResult.Success(Unit)
@@ -52,79 +60,81 @@ class AuthenticationRepositoryImpl(
             return OperationResult.Failure(AdminError.SessionExpired)
         }
 
-        val current = api.current(session)
-        return when (current) {
+        // Do not send a locally expired access credential. Refresh first while the
+        // parent server-side session is still within its lifetime.
+        if (session.accessTokenExpiresAtEpochMillis <= System.currentTimeMillis()) {
+            return refreshAndGetCurrent(session)
+        }
+
+        return when (val current = api.current(session)) {
             is OperationResult.Success -> {
-                val updated = session.copy(admin = current.value)
-                secureStore.saveSession(updated)
-                OperationResult.Success(current.value)
+                if (current.value.status != ACTIVE_STATUS) {
+                    secureStore.clearSession()
+                    OperationResult.Failure(AdminError.AccountDisabled)
+                } else {
+                    secureStore.saveSession(session.copy(admin = current.value))
+                    OperationResult.Success(current.value)
+                }
             }
             is OperationResult.Failure -> {
-                if (current.error == AdminError.SessionExpired) {
-                    refreshAndGetCurrent(session)
-                } else {
-                    if (current.error in setOf(
-                            AdminError.SessionRevoked,
-                            AdminError.AccountDisabled,
-                            AdminError.Authorization,
-                        )
-                    ) {
+                when (current.error) {
+                    AdminError.SessionExpired -> refreshAndGetCurrent(session)
+                    AdminError.SessionRevoked,
+                    AdminError.AccountDisabled,
+                    AdminError.Authorization -> {
                         secureStore.clearSession()
+                        current
                     }
-                    current
+                    else -> current
                 }
             }
         }
     }
 
     override suspend fun restoreSession(): OperationResult<AuthenticatedAdmin?> {
-        val session = secureStore.readSession() ?: return OperationResult.Success(null)
+        val session = secureStore.readSession()
+            ?: return OperationResult.Success(null)
 
         if (session.sessionExpiresAtEpochMillis <= System.currentTimeMillis()) {
             secureStore.clearSession()
             return OperationResult.Success(null)
         }
 
+        if (session.accessTokenExpiresAtEpochMillis <= System.currentTimeMillis()) {
+            return when (val refreshed = refreshAndGetCurrent(session)) {
+                is OperationResult.Success -> OperationResult.Success(refreshed.value)
+                is OperationResult.Failure -> {
+                    when (refreshed.error) {
+                        AdminError.SessionRevoked,
+                        AdminError.AccountDisabled,
+                        AdminError.Authorization,
+                        AdminError.SessionExpired -> OperationResult.Failure(refreshed.error)
+                        else -> refreshed
+                    }
+                }
+            }
+        }
+
         return when (val current = api.current(session)) {
             is OperationResult.Success -> {
-                secureStore.saveSession(session.copy(admin = current.value))
-                OperationResult.Success(current.value)
+                if (current.value.status != ACTIVE_STATUS) {
+                    secureStore.clearSession()
+                    OperationResult.Failure(AdminError.AccountDisabled)
+                } else {
+                    secureStore.saveSession(session.copy(admin = current.value))
+                    OperationResult.Success(current.value)
+                }
             }
             is OperationResult.Failure -> {
-                if (current.error == AdminError.SessionExpired) {
-                    when (val refreshed = api.refresh(session)) {
-                        is OperationResult.Success -> {
-                            secureStore.saveSession(refreshed.value)
-                            when (val verified = api.current(refreshed.value)) {
-                                is OperationResult.Success -> {
-                                    secureStore.saveSession(
-                                        refreshed.value.copy(admin = verified.value),
-                                    )
-                                    OperationResult.Success(verified.value)
-                                }
-                                is OperationResult.Failure -> {
-                                    secureStore.clearSession()
-                                    OperationResult.Success(null)
-                                }
-                            }
-                        }
-                        is OperationResult.Failure -> {
-                            secureStore.clearSession()
-                            OperationResult.Success(null)
-                        }
-                    }
-                } else {
-                    if (
-                        current.error in setOf(
-                            AdminError.SessionExpired,
-                            AdminError.SessionRevoked,
-                            AdminError.AccountDisabled,
-                            AdminError.Authorization,
-                        )
-                    ) {
+                when (current.error) {
+                    AdminError.SessionExpired -> refreshAndGetCurrentAsNullable(session)
+                    AdminError.SessionRevoked,
+                    AdminError.AccountDisabled,
+                    AdminError.Authorization -> {
                         secureStore.clearSession()
+                        OperationResult.Failure(current.error)
                     }
-                    current
+                    else -> current
                 }
             }
         }
@@ -133,13 +143,31 @@ class AuthenticationRepositoryImpl(
     private suspend fun refreshAndGetCurrent(
         session: AuthenticationSession,
     ): OperationResult<AuthenticatedAdmin> {
+        if (session.sessionExpiresAtEpochMillis <= System.currentTimeMillis()) {
+            secureStore.clearSession()
+            return OperationResult.Failure(AdminError.SessionExpired)
+        }
+
         return when (val refreshed = api.refresh(session)) {
             is OperationResult.Success -> {
+                if (refreshed.value.sessionExpiresAtEpochMillis <= System.currentTimeMillis()) {
+                    secureStore.clearSession()
+                    return OperationResult.Failure(AdminError.SessionExpired)
+                }
+
                 secureStore.saveSession(refreshed.value)
+
                 when (val current = api.current(refreshed.value)) {
                     is OperationResult.Success -> {
-                        secureStore.saveSession(refreshed.value.copy(admin = current.value))
-                        OperationResult.Success(current.value)
+                        if (current.value.status != ACTIVE_STATUS) {
+                            secureStore.clearSession()
+                            OperationResult.Failure(AdminError.AccountDisabled)
+                        } else {
+                            secureStore.saveSession(
+                                refreshed.value.copy(admin = current.value),
+                            )
+                            OperationResult.Success(current.value)
+                        }
                     }
                     is OperationResult.Failure -> {
                         secureStore.clearSession()
@@ -149,8 +177,20 @@ class AuthenticationRepositoryImpl(
             }
             is OperationResult.Failure -> {
                 secureStore.clearSession()
-                OperationResult.Failure(AdminError.SessionExpired)
+                refreshed
             }
         }
+    }
+
+    private suspend fun refreshAndGetCurrentAsNullable(
+        session: AuthenticationSession,
+    ): OperationResult<AuthenticatedAdmin?> =
+        when (val result = refreshAndGetCurrent(session)) {
+            is OperationResult.Success -> OperationResult.Success(result.value)
+            is OperationResult.Failure -> OperationResult.Failure(result.error)
+        }
+
+    private companion object {
+        const val ACTIVE_STATUS = "ACTIVE"
     }
 }

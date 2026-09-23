@@ -49,13 +49,14 @@ object AdminStateViews {
                     MaterialButton(context).apply {
                         text = context.getString(R.string.retry)
                         minHeight = context.resources.getDimensionPixelSize(R.dimen.minimum_touch_target)
+                        contentDescription = context.getString(R.string.retry)
                         setOnClickListener { onRetry() }
                     },
                 )
             }
         }
 
-    private fun stateCard(context: Context): LinearLayout {
+    private fun stateCard(context: Context): MaterialCardView {
         val card = MaterialCardView(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -73,11 +74,12 @@ object AdminStateViews {
             )
         }
         card.addView(content)
-        return content
+        return card
     }
 
-    private fun LinearLayout.addText(text: String, sizeSp: Float) {
-        addView(
+    private fun MaterialCardView.addText(text: String, sizeSp: Float) {
+        val content = getChildAt(0) as LinearLayout
+        content.addView(
             MaterialTextView(context).apply {
                 this.text = text
                 textSize = sizeSp

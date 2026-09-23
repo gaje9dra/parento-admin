@@ -1,0 +1,3 @@
+<resources>
+    <dimen name="minimum_touch_target">48dp</dimen>
+</resources>

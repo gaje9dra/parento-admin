@@ -111,6 +111,8 @@ class AuthenticationApiClient(
             OperationResult.Failure(AdminError.Network)
         } catch (_: Exception) {
             OperationResult.Failure(AdminError.UnknownAuthentication)
+        } finally {
+            // HttpURLConnection resources are closed by stream use; disconnect releases the connection itself.
         }
     }
 

@@ -118,3 +118,83 @@ Parento Admin -> Parento Backend <- Parento Managed
 The Admin app will eventually authenticate and communicate with the backend and consume backend-mediated managed-device state. Those protocols are documented only and are not implemented in Phase 1.5.
 
 Only `gaje9dra/parento-admin` is modified by this phase.
+
+## Phase 2.1 — Local Persistence & Data Layer Foundation
+
+Phase 2.1 adds the Admin application's local persistence foundation only.
+
+### Persistence architecture
+
+```text
+UI
+ ↓
+ViewModel
+ ↓
+Domain / Use Case
+ ↓
+Repository Interface
+ ↓
+Repository Implementation
+ ↓
+Local Data Source / DAO
+ ↓
+Room Database
+```
+
+The UI and ViewModels do not access Room directly. Room implementation details remain inside the data layer.
+
+### Database
+
+Room + SQLite is the local persistence technology for this phase.
+
+`ParentoAdminDatabase` is version 1 and contains only `LocalApplicationStateEntity`.
+
+The baseline state contains `stateVersion`, `lastSynchronizedAtEpochMillis`, and `initialized`.
+
+No authentication, device, enrollment, policy, command, telemetry, location, media, or audit entities are persisted.
+
+`LocalDatabaseFactory` creates the application database using `applicationContext`. `AdminAppContainer`, owned by `ParentoAdminApplication`, provides controlled lazy access to the database and repository.
+
+### Repository
+
+`LocalStateRepository` is the domain-facing persistence contract.
+
+`RoomLocalStateRepository` is its Room-backed implementation.
+
+The repository exposes read, write, clear, and Flow observation. Room entities and DAO types do not cross into UI code.
+
+Persistence failures are mapped to the existing `AdminError.LocalStorage` application-level error.
+
+### Threading
+
+DAO reads/writes are suspend functions and reactive reads use Kotlin Flow. Production code does not perform synchronous database operations from the UI layer and no arbitrary thread pool was introduced.
+
+### Migration
+
+Room schema versioning starts at version 1 with schema export configured under `schemas/`.
+
+No destructive migration is enabled. Future schema changes must increment the version and provide explicit deterministic migrations.
+
+### Test storage
+
+Android instrumentation tests use an isolated in-memory Room database. They never use the application's real persistent database.
+
+Tests cover database initialization, read/write, update, clear, missing-record behavior, Flow observation, and application-level storage error handling.
+
+### Security and backup
+
+Phase 2.1 creates no credential or authentication storage. Passwords, JWTs, access tokens, refresh tokens, and secrets are not persisted.
+
+Android backup remains disabled from the existing security baseline. No new Android permissions were introduced.
+
+Future sensitive session/credential material must use appropriate Android secure-storage mechanisms in its later phase. No custom cryptography is introduced.
+
+### Development reset
+
+No production database-reset API is exposed. Test reset is achieved by closing and discarding the isolated in-memory database. Production data is never automatically deleted.
+
+### Deferred functionality
+
+Phase 2.1 does not implement authentication, backend communication, enrollment, device management, monitoring, screen sharing, audio, camera, application blocking, website blocking, policy management, notifications, or other future Parento features.
+
+Only `gaje9dra/parento-admin` is modified by this phase.

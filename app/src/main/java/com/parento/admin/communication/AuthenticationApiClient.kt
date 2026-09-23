@@ -154,7 +154,7 @@ class AuthenticationApiClient(
             status == 403 && code == "ACCOUNT_DISABLED" -> AdminError.AccountDisabled
             status == 403 -> AdminError.Authorization
             status == 400 -> AdminError.Validation
-            status == 429 -> AdminError.ServerUnavailable
+            status == 429 -> AdminError.AuthenticationRateLimited
             status >= 500 -> AdminError.ServerUnavailable
             else -> AdminError.UnknownAuthentication
         }

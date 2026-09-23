@@ -8,6 +8,7 @@ sealed interface AdminError {
     data object InvalidCredentials : AdminError
     data object AccountDisabled : AdminError
     data object SessionExpired : AdminError
+    data object SessionRevoked : AdminError
     data object Validation : AdminError
     data object ServerUnavailable : AdminError
     data object UnknownAuthentication : AdminError

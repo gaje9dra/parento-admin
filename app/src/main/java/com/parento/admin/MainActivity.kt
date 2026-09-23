@@ -24,6 +24,8 @@ import com.parento.admin.ui.AuthenticationViewModelFactory
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
+    private var hasCompletedInitialStart = false
+
     private val authViewModel: AuthenticationViewModel by lazy {
         ViewModelProvider(
             this,
@@ -45,6 +47,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
 
         val root = FrameLayout(this)
         val column = LinearLayout(this).apply {
@@ -96,13 +99,25 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    override fun onStart() {
+        super.onStart()
+        if (hasCompletedInitialStart) {
+            authViewModel.validateCurrentSession()
+        } else {
+            hasCompletedInitialStart = true
+        }
+    }
+
     private fun renderAuthenticationState(state: AuthenticationState) {
         toolbar.menu.clear()
 
         when (state) {
             AuthenticationState.Unauthenticated,
             AuthenticationState.Authenticating,
-            is AuthenticationState.AuthenticationError -> {
+            is AuthenticationState.AuthenticationError,
+            AuthenticationState.SessionExpired,
+            AuthenticationState.SessionRevoked,
+            AuthenticationState.AccountDisabled -> {
                 toolbar.title = getString(R.string.login_title)
                 contentRoot.removeAllViews()
                 contentRoot.addView(FrameLayout(this).also { frame ->

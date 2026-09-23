@@ -48,6 +48,7 @@ class LocalStateMigrationTest {
 
         try {
             ParentoAdminDatabase.MIGRATION_1_2.migrate(oldDb)
+            ParentoAdminDatabase.MIGRATION_2_3.migrate(oldDb)
 
             oldDb.query(
                 "SELECT installationId, installationCreatedAtEpochMillis, " +
@@ -62,6 +63,18 @@ class LocalStateMigrationTest {
                 assertNull(cursor.getLongOrNull(3))
                 assertEquals(1234L, cursor.getLong(4))
                 assertEquals(1, cursor.getInt(5))
+            }
+
+            oldDb.query("PRAGMA index_list('local_application_state')").use { cursor ->
+                var foundUniqueInstallationIndex = false
+                while (cursor.moveToNext()) {
+                    if (cursor.getString(cursor.getColumnIndexOrThrow("name")) ==
+                        "index_local_application_state_installationId") {
+                        foundUniqueInstallationIndex = true
+                        assertEquals(1, cursor.getInt(cursor.getColumnIndexOrThrow("unique")))
+                    }
+                }
+                assertTrue(foundUniqueInstallationIndex)
             }
         } finally {
             helper.close()

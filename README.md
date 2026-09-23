@@ -680,3 +680,66 @@ Still deferred:
 Only `gaje9dra/parento-admin` is modified by Phase 2.1.
 
 Future requirements for `gaje9dra/parento-backend` and `gaje9dra/parento-managed` are documented only. Neither repository is modified by this phase.
+
+
+## Phase 2.2 — Admin Local Domain Persistence
+
+Phase 2.2 extends the Phase 2.1 Room foundation with the minimum persistent Admin application state. Only `gaje9dra/parento-admin` is modified.
+
+### Architecture
+
+```
+UI
+ ↓
+ViewModel
+ ↓
+Domain
+ ↓
+Repository
+ ↓
+Local Data Source
+ ↓
+Room
+```
+
+The current project has no use-case layer, so the repository remains the domain-facing persistence boundary without adding unnecessary boilerplate.
+
+### Persisted state
+
+The existing singleton `local_application_state` row now retains the Phase 2.1 state plus:
+
+- application-scoped `installationId`
+- `installationCreatedAtEpochMillis`
+- `setupState`
+- `lastInitializedAtEpochMillis`
+
+The installation identifier is a randomly generated UUID stored only in the app's private Room database. No IMEI, serial number, MAC address, advertising ID, or other hardware identifier is used.
+
+Fresh local state is explicitly `UNCONFIGURED`. Authentication, accounts, sessions, credentials, and backend identity are not implemented.
+
+### Database and migration
+
+The Room database remains `parento-admin.db`.
+
+- Phase 2.1: database version 1
+- Phase 2.2: database version 2
+- explicit `MIGRATION_1_2`
+- no destructive migration fallback
+
+The migration adds only the Phase 2.2 local-state metadata and preserves the Phase 2.1 values.
+
+### Initialization and errors
+
+Application startup initializes the local state through the existing application container using an application-owned IO coroutine scope. Persistence failures are mapped to `AdminError.LocalStorage`; logs do not include installation IDs or stored state.
+
+### Backup and secure-storage boundary
+
+The existing `android:allowBackup="false"` baseline remains unchanged. Current local state is therefore treated as installation-specific, not as a supported backup/restore mechanism. No credentials or session secrets are stored in Room. Future authentication must introduce Android-appropriate secure storage separately.
+
+### Tests
+
+Instrumented repository tests use an isolated in-memory Room database. Migration coverage creates the Phase 2.1 table shape, applies the explicit 1→2 migration, and verifies preservation of existing values plus safe new defaults.
+
+### Deferred
+
+Authentication, backend communication, enrollment, device management, monitoring, location, camera, microphone, audio, screen sharing/capture, app/site blocking, policies, notifications, and remote commands remain deferred.

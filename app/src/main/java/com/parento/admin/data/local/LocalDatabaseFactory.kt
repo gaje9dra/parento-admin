@@ -9,7 +9,9 @@ object LocalDatabaseFactory {
             context.applicationContext,
             ParentoAdminDatabase::class.java,
             DATABASE_NAME,
-        ).build()
+        )
+            .addMigrations(ParentoAdminDatabase.MIGRATION_1_2)
+            .build()
 
     private const val DATABASE_NAME = "parento-admin.db"
 }

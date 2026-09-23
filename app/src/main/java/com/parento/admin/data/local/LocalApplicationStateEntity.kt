@@ -10,8 +10,13 @@ data class LocalApplicationStateEntity(
     val stateVersion: Int = 1,
     val lastSynchronizedAtEpochMillis: Long? = null,
     val initialized: Boolean = false,
+    val installationId: String? = null,
+    val installationCreatedAtEpochMillis: Long? = null,
+    val setupState: String = DEFAULT_SETUP_STATE,
+    val lastInitializedAtEpochMillis: Long? = null,
 ) {
     companion object {
         const val SINGLETON_ID = 1
+        const val DEFAULT_SETUP_STATE = "UNCONFIGURED"
     }
 }

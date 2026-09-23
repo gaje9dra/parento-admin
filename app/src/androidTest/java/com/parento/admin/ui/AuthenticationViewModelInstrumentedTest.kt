@@ -36,7 +36,6 @@ class AuthenticationViewModelInstrumentedTest {
 
         assertEquals(1, repository.loginCalls)
         assertEquals(AuthenticationState.Authenticated(admin), viewModel.state.value)
-        viewModel.clear()
     }
 
     @Test

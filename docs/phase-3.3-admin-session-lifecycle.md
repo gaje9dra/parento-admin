@@ -115,10 +115,12 @@ Logout is best effort against the backend but authoritative locally.
 
 The client:
 
-1. sends the current session to the backend logout endpoint when available;
-2. clears the encrypted local session regardless of network success;
+1. clears the encrypted local session immediately;
+2. sends the previously loaded session to the backend logout endpoint when available;
 3. clears the in-memory authentication state;
 4. returns to the login flow.
+
+The local logout result does not depend on network success.
 
 Repeated logout is harmless.
 

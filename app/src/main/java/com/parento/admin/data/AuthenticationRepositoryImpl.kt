@@ -63,6 +63,14 @@ class AuthenticationRepositoryImpl(
                 if (current.error == AdminError.SessionExpired) {
                     refreshAndGetCurrent(session)
                 } else {
+                    if (current.error in setOf(
+                            AdminError.SessionRevoked,
+                            AdminError.AccountDisabled,
+                            AdminError.Authorization,
+                        )
+                    ) {
+                        secureStore.clearSession()
+                    }
                     current
                 }
             }

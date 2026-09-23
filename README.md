@@ -2,134 +2,185 @@
 
 **Parento Admin** is the Android administrator/controller application for the Parento platform.
 
+## Phase 1.2 — Admin Android App Architecture & Internal Contracts
+
+Phase 1.2 establishes internal contracts and domain boundaries on top of the Phase 1.1 Android foundation. It does **not** implement authentication, enrollment, device control, policy enforcement, realtime communication, or other future management features.
+
+## Repository boundary
+
+This repository is:
+
+`gaje9dra/parento-admin`
+
+Parento is intentionally separated into three repositories:
+
+- `gaje9dra/parento-admin` — administrator/controller Android application.
+- `gaje9dra/parento-backend` — API, persistence, authorization, and realtime infrastructure.
+- `gaje9dra/parento-managed` — managed Android-device application.
+
+Only this repository is modified by Phase 1.2.
+
 ## Architecture
 
-Parento consists of three strictly separated components:
+The Admin application is organized around these responsibilities:
 
 ```text
 Parento Admin
-      ↓
-Parento Backend
-      ↓
-Parento Managed
+│
+├── Presentation / UI
+├── Authentication
+├── Device Management
+├── Policy Management
+├── Communication
+├── Security
+└── Local Data
 ```
 
-- `gaje9dra/parento-admin` — this Android administrator/controller application.
-- `gaje9dra/parento-backend` — trusted API, persistence, realtime, and authorization layer.
-- `gaje9dra/parento-managed` — Android application installed on the explicitly enrolled/authorized managed device.
+The domain layer remains independent of Android UI where practical.
 
-The Admin app will eventually communicate with Managed devices through the backend. It does not directly establish arbitrary device-control connections.
+### Authentication boundary
 
-## Phase 1.1 scope
+`auth/AuthenticationManager.kt` defines the future administrator authentication boundary. Phase 1.2 does not implement login, registration, OAuth, password storage, or fake authentication.
 
-This phase establishes only a clean Android application foundation:
+### Backend communication boundary
 
-- Reproducible Gradle/Android configuration
-- Standard application identity
-- Minimal launchable UI
-- Unit-test foundation
-- Documentation and security boundaries
+`communication/BackendClient.kt` defines future communication with `gaje9dra/parento-backend` for device listing/details, policy management, events, and later realtime integration.
 
-The following are intentionally **not implemented**:
+No network request, production API credential, authentication flow, or realtime connection is implemented in this phase.
 
-- Administrator authentication or account management
-- Device enrollment or pairing
-- Managed-device list/details/status
-- Location or location history
-- Screen sharing
-- Audio or camera functionality
-- Application inventory
-- Application blocking or installation restrictions
-- Website/network filtering
-- Device restrictions or device lock
-- Policy management
-- Realtime communication
-- Notifications
-- Audit/security events
-- Backend API integration
-- Device commands
+### Device-management boundary
 
-No fake controls imply that these features are available.
+`device/DeviceManager.kt` provides the future service boundary for managed-device listing and details. Pairing, enrollment, removal, remote commands, and other device-control operations remain planned functionality.
 
-## Project structure
+### Policy-management boundary
+
+`policy/PolicyManager.kt` defines the future policy-management contract. Application, website, network, device, and usage policies are represented only as future domain concepts. Policy enforcement is not implemented.
+
+### Security boundary
+
+`security/SecurityStore.kt` is the future boundary for authenticated-session state, secure token storage, device authorization, and related security concerns. Phase 1.2 stores no credentials, tokens, keys, or production secrets.
+
+### Local-data boundary
+
+`data/LocalDataStore.kt` defines future persistence for non-sensitive cached application state such as managed-device data. No database or real credential persistence is implemented.
+
+### Logging boundary
+
+`logging/AdminLogger.kt` provides a structured logging contract. Implementations must avoid passwords, authentication tokens, private keys, API secrets, and unnecessary sensitive device information. Production logging should be controllable by the eventual implementation.
+
+## Domain model
+
+The Phase 1.2 foundation contains:
+
+- `Administrator` — future authenticated administrator identity.
+- `ManagedDevice` — admin-side representation of a managed device.
+- `DeviceStatus` — high-level device status.
+- `EnrollmentState` — enrollment lifecycle state.
+- `ConnectionState` — connection lifecycle state.
+- `Policy` — minimal policy identity for future management.
+- `OperationResult` / `AdminError` — consistent success/failure handling.
+
+The managed-device model currently contains only the fields needed by the specification: unique device identity, display name, connection state, enrollment state, status, optional battery percentage, and optional last synchronization timestamp.
+
+## UI / navigation architecture
+
+`presentation/NavigationDestination.kt` establishes future navigation destinations for:
 
 ```text
-app/
-  src/
-    main/
-      java/com/parento/admin/
-        MainActivity.kt
-      res/
-        values/
-          strings.xml
-          themes.xml
-      AndroidManifest.xml
-    test/
-      java/com/parento/admin/
-        ExampleUnitTest.kt
+Login
+  ↓
+Dashboard
+  ↓
+Devices
+  ├── Device Details
+  ├── Location
+  ├── Screen Session
+  ├── Applications
+  ├── Websites
+  └── Policies
 ```
 
-The future architecture will separate UI, authentication, device management, policy management, communication, security, and local data. Phase 1.1 does not create speculative implementation classes for those systems.
+These are navigation contracts only. No corresponding management screens or fake controls have been added. The Phase 1.1 launch screen remains the active UI.
 
-## Requirements
+## Explicitly not implemented
+
+Phase 1.2 does not implement:
+
+- Admin registration, login, or OAuth
+- Device enrollment or QR pairing
+- Device authentication or remote commands
+- Location
+- Screen sharing
+- Audio, camera, or gallery access
+- Application blocking or installation blocking
+- Website blocking or DNS/VPN filtering
+- Device locking
+- Notifications
+- Production policy enforcement
+- Backend requests or realtime communication
+
+These belong to later phases.
+
+## Testing
+
+Meaningful unit tests cover:
+
+- Managed-device domain representation.
+- State handling.
+- Error/result handling.
+- Navigation contract context.
+- Architectural model behavior.
+
+No tests were added solely to inflate coverage.
+
+## Dependencies
+
+Phase 1.2 adds **no new Gradle dependencies**. The Phase 1.1 Android foundation dependencies remain unchanged.
+
+## Requirements and local verification
 
 - Android Studio with a compatible Android SDK
 - JDK 17
 - Android SDK Platform 36
 
-## Local development
-
-Open the repository in Android Studio and allow Gradle to sync.
-
-Build from a terminal:
+Expected commands:
 
 ```bash
 ./gradlew assembleDebug
+./gradlew test
+./gradlew lint
 ```
 
 On Windows:
 
 ```powershell
-.\gradlew.bat assembleDebug
+.\\gradlew.bat assembleDebug
+.\\gradlew.bat test
+.\\gradlew.bat lint
 ```
 
-Run unit tests:
+## Cross-repository requirements
 
-```bash
-./gradlew test
-```
+### `gaje9dra/parento-backend`
 
-Run lint:
+Future backend work must expose authenticated, authorized contracts for administrator authentication, managed-device listing/details, policy management, events, and realtime communication. This phase does not modify that repository.
 
-```bash
-./gradlew lint
-```
+### `gaje9dra/parento-managed`
+
+Future managed-device work must expose the device-side contracts required for authorized enrollment, status, policy application, and other explicitly permitted management functionality. This phase does not modify that repository.
 
 ## Security principles
 
-- No passwords, API keys, private keys, or production credentials are stored in source.
-- No hidden administrator accounts or backdoors.
-- No arbitrary remote-control mechanism.
-- No covert surveillance functionality.
-- Future management operations must authenticate and authorize the administrator through the backend.
-- Sensitive Android permissions are introduced only when their corresponding feature is legitimately implemented.
+- No production credentials or secrets are committed.
+- No passwords or authentication tokens are stored by Phase 1.2.
+- No hidden administrator accounts or bypass mechanisms.
+- No covert surveillance implementation.
+- No unnecessary sensitive Android permissions.
+- Future management operations must use explicit authentication and authorization.
+- Android-sensitive capabilities are introduced only with their corresponding legitimate feature and security model.
 
-## Backend boundary
+## Phase 1.2 status
 
-Future Admin-app communication will use:
+Implemented: internal architecture contracts, domain foundation, error/result model, logging boundary, local-data boundary, backend boundary, device-management boundary, policy-management boundary, security boundary, and future navigation contract.
 
-`gaje9dra/parento-backend`
-
-Phase 1.1 deliberately does not authenticate, call, or open a realtime connection to the backend.
-
-## Managed-device boundary
-
-Future managed-device operations target:
-
-`gaje9dra/parento-managed`
-
-The intended architecture is Admin → Backend → Managed. The Admin app does not directly connect to the Managed app.
-
-## Cross-repository policy
-
-Only `gaje9dra/parento-admin` is modified by this phase. Any future dependency on the backend or Managed app must be documented and implemented in its respective repository during its own phase.
+Not implemented: all future management functionality listed above.

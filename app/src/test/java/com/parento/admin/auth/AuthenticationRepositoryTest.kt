@@ -104,6 +104,79 @@ class AuthenticationRepositoryTest {
 
 
     @Test
+    fun disabledIdentityReturnedByBackendIsNotAuthenticated() = runBlocking {
+        val disabledAdmin = admin.copy(status = "DISABLED")
+        val store = FakeStore()
+        val repository = AuthenticationRepositoryImpl(
+            FakeApi(
+                loginResult = OperationResult.Success(
+                    session().copy(admin = disabledAdmin),
+                ),
+            ),
+            store,
+        )
+
+        val result = repository.login(
+            AdminLoginCredentials(
+                "admin@example.com",
+                "valid administrator password",
+            ),
+        )
+
+        assertEquals(
+            OperationResult.Failure(AdminError.AccountDisabled),
+            result,
+        )
+        assertNull(store.session)
+    }
+
+    @Test
+    fun expiredAccessTokenRefreshesBeforeAuthenticatedRequest() = runBlocking {
+        val expired = session(
+            accessTokenExpiresAtEpochMillis = System.currentTimeMillis() - 1,
+        )
+        val refreshed = session(
+            accessToken = "new-access",
+            refreshToken = "new-refresh",
+        )
+        val api = FakeApi(
+            currentResult = OperationResult.Failure(AdminError.InvalidState),
+            refreshResult = OperationResult.Success(refreshed),
+            currentAfterRefresh = OperationResult.Success(admin),
+        )
+        val store = FakeStore().apply { session = expired }
+        val repository = AuthenticationRepositoryImpl(api, store)
+
+        val result = repository.getCurrentAuthenticatedAdmin()
+
+        assertEquals(OperationResult.Success(admin), result)
+        assertEquals("new-access", store.session?.accessToken)
+        assertEquals(1, api.refreshCalls)
+        assertEquals(1, api.currentCalls)
+    }
+
+    @Test
+    fun refreshFailureIsPropagatedAfterCredentialsAreCleared() = runBlocking {
+        val store = FakeStore().apply {
+            session = session(
+                accessTokenExpiresAtEpochMillis = System.currentTimeMillis() - 1,
+            )
+        }
+        val repository = AuthenticationRepositoryImpl(
+            FakeApi(refreshResult = OperationResult.Failure(AdminError.AccountDisabled)),
+            store,
+        )
+
+        val result = repository.getCurrentAuthenticatedAdmin()
+
+        assertEquals(
+            OperationResult.Failure(AdminError.AccountDisabled),
+            result,
+        )
+        assertNull(store.session)
+    }
+
+    @Test
     fun revokedSessionIsCleared() = runBlocking {
         val store = FakeStore().apply { session = session() }
         val repository = AuthenticationRepositoryImpl(
@@ -237,14 +310,18 @@ private class FakeApi(
         ),
     private val logoutResult: OperationResult<Unit> = OperationResult.Success(Unit),
 ) : AuthenticationApi {
-    private var currentCalls = 0
+    var currentCalls = 0
+    var refreshCalls = 0
     override suspend fun login(
         credentials: AdminLoginCredentials,
     ): OperationResult<AuthenticationSession> = loginResult
 
     override suspend fun refresh(
         session: AuthenticationSession,
-    ): OperationResult<AuthenticationSession> = refreshResult
+    ): OperationResult<AuthenticationSession> {
+        refreshCalls += 1
+        return refreshResult
+    }
 
     override suspend fun current(
         session: AuthenticationSession,

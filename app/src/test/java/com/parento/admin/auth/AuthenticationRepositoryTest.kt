@@ -128,7 +128,7 @@ class AuthenticationRepositoryTest {
         val result = repository.restoreSession()
 
         assertEquals(
-            OperationResult.Failure<AuthenticatedAdmin>(AdminError.SessionRevoked),
+            OperationResult.Failure(AdminError.SessionRevoked),
             result,
         )
         assertNull(store.session)
@@ -145,7 +145,7 @@ class AuthenticationRepositoryTest {
         val result = repository.restoreSession()
 
         assertEquals(
-            OperationResult.Failure<AuthenticatedAdmin>(AdminError.AccountDisabled),
+            OperationResult.Failure(AdminError.AccountDisabled),
             result,
         )
         assertNull(store.session)
@@ -162,7 +162,7 @@ class AuthenticationRepositoryTest {
         val result = repository.restoreSession()
 
         assertEquals(
-            OperationResult.Failure<AuthenticatedAdmin>(AdminError.Authorization),
+            OperationResult.Failure(AdminError.Authorization),
             result,
         )
         assertNull(store.session)

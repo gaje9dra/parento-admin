@@ -34,6 +34,20 @@ class AuthenticationRepositoryTest {
     }
 
     @Test
+    fun shortPasswordIsRejectedBeforeApiCall() = runBlocking {
+        val api = FakeApi()
+        val store = FakeStore()
+        val repository = AuthenticationRepositoryImpl(api, store)
+
+        val result = repository.login(
+            AdminLoginCredentials("admin@example.com", "short"),
+        )
+
+        assertEquals(OperationResult.Failure(AdminError.Validation), result)
+        assertNull(store.session)
+    }
+
+    @Test
     fun invalidCredentialsRemainUnauthenticated() = runBlocking {
         val api = FakeApi(
             loginResult = OperationResult.Failure(AdminError.InvalidCredentials),

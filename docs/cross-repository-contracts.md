@@ -115,3 +115,27 @@ Authentication mapping used by this repository:
 The backend currently does not expose a distinct disabled-account error; disabled administrators therefore follow the backend's generic invalid-credentials contract rather than an invented client-side distinction.
 
 No backend repository changes are made from this repository.
+
+
+## Phase 3.2 — Admin authentication hardening
+
+The Admin Android authentication boundary remains dependent on the existing backend Phase 3.1 authentication endpoints:
+
+- POST /api/v1/auth/admin/login
+- POST /api/v1/auth/admin/refresh
+- GET /api/v1/auth/admin/me
+- POST /api/v1/auth/admin/logout
+
+The Admin client treats HTTP 401 from the current-admin endpoint as an invalid/expired access credential and performs at most one refresh attempt using the existing refresh endpoint. It does not invent a refresh protocol.
+
+HTTP 401 with INVALID_CREDENTIALS during login maps to the InvalidCredentials domain error. HTTP 403 maps to authorization/account-status errors according to the backend error code. HTTP 429 from the backend authentication rate limiter maps to the Admin AuthenticationRateLimited domain error and is presented as a safe retry-later message.
+
+The Android app does not assume that every unauthorized response can be distinguished as expired versus revoked because the current backend contract may use the generic AUTHENTICATION_REQUIRED error. When the backend later exposes more specific error codes, the mapping can be extended without changing the secure session boundary.
+
+Authentication credentials remain outside Room. The Admin app stores only the encrypted session blob in private application storage, with its AES key held by Android Keystore. Passwords are transient and are never persisted.
+
+Local logout is authoritative for the device UI: backend logout is attempted when possible, but failure to reach the backend does not prevent local credential removal or transition to the unauthenticated flow.
+
+The backend remains authoritative for administrator authorization and account status. The Admin app does not treat its local authentication state as proof of server-side authorization.
+
+No Admin-to-Managed direct communication, enrollment, device control, monitoring, or later-phase management functionality is introduced by Phase 3.2.

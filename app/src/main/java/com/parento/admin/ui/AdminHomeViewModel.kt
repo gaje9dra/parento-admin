@@ -82,6 +82,7 @@ class AdminHomeViewModel(
         AdminError.SessionRevoked -> "Your session is no longer valid. Please sign in again."
         AdminError.Validation -> "The authentication request was invalid."
         AdminError.ServerUnavailable -> "The Parento server is temporarily unavailable."
+        AdminError.AuthenticationRateLimited -> "Too many authentication attempts. Please wait and try again."
         AdminError.UnknownAuthentication -> "Authentication could not be completed."
         is AdminError.DeviceNotFound -> "The requested device could not be found."
         AdminError.Policy -> "The policy operation could not be completed."

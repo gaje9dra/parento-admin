@@ -94,7 +94,7 @@ class LocalStateRepositoryInstrumentedTest {
     fun writeAndReadRoundTripPreservesPhase22State() = runBlocking {
         val expected = LocalApplicationState(
             initialized = true,
-            installationId = "installation-test",
+            installationId = "550e8400-e29b-41d4-a716-446655440000",
             installationCreatedAtEpochMillis = 1000L,
             setupState = AdminLocalSetupState.UNCONFIGURED,
             lastInitializedAtEpochMillis = 1234L,
@@ -108,11 +108,41 @@ class LocalStateRepositoryInstrumentedTest {
     fun observeEmitsPersistedState() = runBlocking {
         val expected = LocalApplicationState(
             initialized = true,
-            installationId = "installation-observed",
+            installationId = "550e8400-e29b-41d4-a716-446655440001",
         )
         repository.write(expected)
 
         assertEquals(OperationResult.Success(expected), repository.observe().first())
+    }
+
+    @Test
+    fun malformedPersistedInstallationIdMapsToLocalStorageError() = runBlocking {
+        database.localApplicationStateDao().upsert(
+            LocalApplicationStateEntity(
+                installationId = "not-a-uuid",
+                installationCreatedAtEpochMillis = 1L,
+            ),
+        )
+
+        val result = repository.read()
+
+        assertTrue(result is OperationResult.Failure)
+        assertEquals(AdminError.LocalStorage, (result as OperationResult.Failure).error)
+    }
+
+    @Test
+    fun invalidPersistedInstallationTimestampMapsToLocalStorageError() = runBlocking {
+        database.localApplicationStateDao().upsert(
+            LocalApplicationStateEntity(
+                installationId = "550e8400-e29b-41d4-a716-446655440002",
+                installationCreatedAtEpochMillis = 0L,
+            ),
+        )
+
+        val result = repository.read()
+
+        assertTrue(result is OperationResult.Failure)
+        assertEquals(AdminError.LocalStorage, (result as OperationResult.Failure).error)
     }
 
     @Test

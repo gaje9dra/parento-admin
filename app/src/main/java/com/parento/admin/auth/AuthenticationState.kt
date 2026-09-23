@@ -8,4 +8,7 @@ sealed interface AuthenticationState {
         val message: String,
         val recoverable: Boolean = true,
     ) : AuthenticationState
+    data object SessionExpired : AuthenticationState
+    data object SessionRevoked : AuthenticationState
+    data object AccountDisabled : AuthenticationState
 }

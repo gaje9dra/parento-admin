@@ -1,5 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Parento Admin</string>
-    <string name="phase_status">Administrator management features will be available in a later phase.</string>
+    <string name="dashboard_title">Admin Home</string>
+    <string name="dashboard_subtitle">Parento administration shell. Management features will be introduced in later phases.</string>
+    <string name="empty_devices_title">No managed devices yet</string>
+    <string name="empty_devices_message">No managed devices are available in this application shell yet.</string>
+    <string name="loading_content_description">Loading</string>
+    <string name="error_title">Something went wrong</string>
+    <string name="retry">Retry</string>
+    <string name="nav_devices">Devices</string>
+    <string name="nav_policies">Policies</string>
+    <string name="nav_settings">Settings</string>
+    <string name="devices_available">%1$d managed device(s) represented by the current state.</string>
+    <string name="devices_placeholder">Device management is reserved for a future phase. No device data is loaded here.</string>
+    <string name="policies_placeholder">Policy management is reserved for a future phase. No policy data is loaded here.</string>
+    <string name="settings_placeholder">Settings are reserved for a future phase.</string>
 </resources>

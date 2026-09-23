@@ -115,6 +115,7 @@ class AuthenticationViewModel(
         AdminError.Network -> "Unable to reach the Parento server."
         AdminError.Timeout -> "The request timed out. Please try again."
         AdminError.ServerUnavailable -> "The Parento server is temporarily unavailable."
+        AdminError.AuthenticationRateLimited -> "Too many authentication attempts. Please wait and try again."
         AdminError.SessionExpired -> "Your session has expired. Please sign in again."
         AdminError.SessionRevoked -> "Your session is no longer valid. Please sign in again."
         AdminError.Authorization -> "This administrator action is not authorized."

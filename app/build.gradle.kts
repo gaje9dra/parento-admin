@@ -37,7 +37,7 @@ android {
             buildConfigField("boolean", "PARENTO_REQUIRE_HTTPS", "false")
             buildConfigField("boolean", "PARENTO_DEBUG_DIAGNOSTICS", "true")
         }
-        create("testing") {
+        create("verification") {
             initWith(getByName("debug"))
             buildConfigField("String", "PARENTO_ENVIRONMENT", "\"test\"")
             buildConfigField("String", "PARENTO_BACKEND_BASE_URL", "\"https://test-backend.example.invalid\"")

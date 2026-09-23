@@ -4,6 +4,7 @@ import com.parento.admin.data.LocalApplicationState
 import com.parento.admin.domain.AdminLocalSetupState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LocalApplicationStateTest {
@@ -11,11 +12,15 @@ class LocalApplicationStateTest {
     fun defaultsAreMinimalAndUnauthenticated() {
         val state = LocalApplicationState()
         assertEquals(1, state.stateVersion)
-        assertEquals(null, state.lastSynchronizedAtEpochMillis)
-        assertFalse(state.initialized)
         assertEquals(null, state.installationId)
-        assertEquals(null, state.installationCreatedAtEpochMillis)
+        assertFalse(state.initialized)
         assertEquals(AdminLocalSetupState.UNCONFIGURED, state.setupState)
-        assertEquals(null, state.lastInitializedAtEpochMillis)
+    }
+
+    @Test
+    fun setupLifecycleIsExplicitAndMinimal() {
+        assertTrue(AdminLocalSetupState.UNCONFIGURED.canTransitionTo(AdminLocalSetupState.READY))
+        assertFalse(AdminLocalSetupState.READY.canTransitionTo(AdminLocalSetupState.READY))
+        assertEquals(setOf("UNCONFIGURED", "READY"), AdminLocalSetupState.entries.map { it.name }.toSet())
     }
 }

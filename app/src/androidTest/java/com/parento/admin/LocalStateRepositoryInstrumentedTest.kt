@@ -12,6 +12,8 @@ import com.parento.admin.domain.AdminError
 import com.parento.admin.domain.AdminLocalSetupState
 import com.parento.admin.domain.OperationResult
 import java.util.UUID
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -58,6 +60,20 @@ class LocalStateRepositoryInstrumentedTest {
         val secondId = (second as OperationResult.Success).value
         assertEquals(firstId, secondId)
         UUID.fromString(firstId)
+    }
+
+    @Test
+    fun concurrentIdentityInitializationProducesOneStableIdentity() = runBlocking {
+        val results = (0 until 16).map {
+            async { repository.getLocalInstallationId() }
+        }.awaitAll()
+
+        val ids = results.map {
+            assertTrue(it is OperationResult.Success)
+            (it as OperationResult.Success).value
+        }.toSet()
+
+        assertEquals(1, ids.size)
     }
 
     @Test
@@ -109,6 +125,24 @@ class LocalStateRepositoryInstrumentedTest {
 
         assertTrue(result is OperationResult.Failure)
         assertEquals(AdminError.LocalStorage, (result as OperationResult.Failure).error)
+    }
+
+    @Test
+    fun invalidSetupTransitionReturnsApplicationError() = runBlocking {
+        assertEquals(
+            OperationResult.Success(Unit),
+            repository.updateSetupState(com.parento.admin.domain.AdminLocalSetupState.READY)
+                .let { result ->
+                    if (result is OperationResult.Success) OperationResult.Success(Unit) else result
+                },
+        )
+
+        val result = repository.updateSetupState(com.parento.admin.domain.AdminLocalSetupState.READY)
+
+        assertEquals(
+            OperationResult.Failure(AdminError.InvalidState),
+            result,
+        )
     }
 
     @Test

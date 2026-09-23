@@ -1,12 +1,15 @@
 package com.parento.admin.data.local
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "local_application_state")
+@Entity(
+    tableName = "local_application_state",
+    indices = [Index(value = ["installationId"], unique = true)],
+)
 data class LocalApplicationStateEntity(
-    @PrimaryKey
-    val id: Int = SINGLETON_ID,
+    @PrimaryKey val id: Int = SINGLETON_ID,
     val stateVersion: Int = 1,
     val lastSynchronizedAtEpochMillis: Long? = null,
     val initialized: Boolean = false,

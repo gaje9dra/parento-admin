@@ -1,9 +1,9 @@
 package com.parento.admin.security
 
 /**
- * Security boundary for future token/session/device-authorization storage.
+ * Security boundary for authenticated administrator session state.
  *
- * No credentials, tokens, keys, or authentication state are persisted in Phase 1.2.
+ * Implementations keep sensitive session material outside the Room database.
  */
 interface SecurityStore {
     fun hasAuthenticatedSession(): Boolean

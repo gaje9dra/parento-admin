@@ -1,38 +1,75 @@
 package com.parento.admin.ui
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import com.parento.admin.domain.AdminError
+import com.parento.admin.domain.ManagedDevice
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import com.parento.admin.domain.AdminError
-import com.parento.admin.domain.ManagedDevice
 
-class AdminHomeViewModel : ViewModel() {
-    private val _uiState = MutableStateFlow<AdminUiState>(AdminUiState.Empty)
+class AdminHomeViewModel(
+    private val savedStateHandle: SavedStateHandle = SavedStateHandle(),
+) : ViewModel() {
+    private val _uiState = MutableStateFlow<AdminUiState>(restoreState())
     val uiState: StateFlow<AdminUiState> = _uiState.asStateFlow()
 
     fun showLoading() {
-        _uiState.value = AdminUiState.Loading
+        updateState(AdminUiState.Loading)
     }
 
     fun showEmpty() {
-        _uiState.value = AdminUiState.Empty
+        updateState(AdminUiState.Empty)
     }
 
     fun showDevices(devices: List<ManagedDevice>) {
-        _uiState.value = if (devices.isEmpty()) {
-            AdminUiState.Empty
-        } else {
-            AdminUiState.Content(devices)
-        }
+        updateState(
+            if (devices.isEmpty()) AdminUiState.Empty else AdminUiState.Content(devices),
+        )
     }
 
     fun showError(error: AdminError, canRetry: Boolean = true) {
-        _uiState.value = AdminUiState.Error(
-            message = errorMessage(error),
-            canRetry = canRetry,
+        updateState(
+            AdminUiState.Error(
+                message = errorMessage(error),
+                canRetry = canRetry,
+            ),
         )
     }
+
+    private fun updateState(state: AdminUiState) {
+        _uiState.value = state
+        savedStateHandle[STATE_KEY] = when (state) {
+            AdminUiState.Loading -> STATE_LOADING
+            AdminUiState.Empty -> STATE_EMPTY
+            is AdminUiState.Content -> STATE_CONTENT
+            is AdminUiState.Error -> {
+                savedStateHandle[ERROR_MESSAGE_KEY] = state.message
+                savedStateHandle[ERROR_RETRY_KEY] = state.canRetry
+                STATE_ERROR
+            }
+        }
+    }
+
+    private fun restoreState(): AdminUiState =
+        when (savedStateHandle.get<String>(STATE_KEY)) {
+            STATE_LOADING -> AdminUiState.Loading
+            STATE_ERROR -> {
+                val message = savedStateHandle.get<String>(ERROR_MESSAGE_KEY)
+                if (message != null) {
+                    AdminUiState.Error(
+                        message = message,
+                        canRetry = savedStateHandle[ERROR_RETRY_KEY] ?: false,
+                    )
+                } else {
+                    AdminUiState.Empty
+                }
+            }
+            // Device records are not persisted in Phase 1, so content safely returns
+            // to the neutral empty state after process recreation.
+            STATE_CONTENT, STATE_EMPTY, null -> AdminUiState.Empty
+            else -> AdminUiState.Empty
+        }
 
     private fun errorMessage(error: AdminError): String = when (error) {
         AdminError.Authentication -> "Administrator authentication is unavailable in this phase."
@@ -43,5 +80,15 @@ class AdminHomeViewModel : ViewModel() {
         AdminError.Backend -> "The management service is temporarily unavailable."
         AdminError.LocalStorage -> "Local application data could not be read."
         AdminError.Unknown -> "Something went wrong. Please try again."
+    }
+
+    private companion object {
+        const val STATE_KEY = "admin_home_state"
+        const val STATE_LOADING = "loading"
+        const val STATE_EMPTY = "empty"
+        const val STATE_CONTENT = "content"
+        const val STATE_ERROR = "error"
+        const val ERROR_MESSAGE_KEY = "admin_error_message"
+        const val ERROR_RETRY_KEY = "admin_error_can_retry"
     }
 }

@@ -1,14 +1,11 @@
 package com.parento.admin.auth
 
-import com.parento.admin.domain.Administrator
 import com.parento.admin.domain.OperationResult
 
 /**
- * Boundary for future administrator authentication.
- *
- * Implementations may be added in a later phase. No credentials or authentication
- * behavior are stored or executed by this Phase 1.2 contract.
+ * Administrator authentication boundary used by future higher-level consumers.
+ * Concrete credential/session behavior is provided by AuthenticationRepository.
  */
 interface AuthenticationManager {
-    fun currentAdministrator(): OperationResult<Administrator?>
+    suspend fun currentAdministrator(): OperationResult<AuthenticatedAdmin?>
 }

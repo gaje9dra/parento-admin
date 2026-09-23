@@ -743,3 +743,21 @@ Instrumented repository tests use an isolated in-memory Room database. Migration
 ### Deferred
 
 Authentication, backend communication, enrollment, device management, monitoring, location, camera, microphone, audio, screen sharing/capture, app/site blocking, policies, notifications, and remote commands remain deferred.
+
+## Phase 2.5 — Local Persistence Security, Testing & Phase 2 Completion
+
+Phase 2.5 audits and hardens the existing local persistence foundation without implementing Phase 3 functionality.
+
+Current Room schema: version 3. Migration 1→2 adds Phase 2.2 local-state metadata; migration 2→3 adds the unique installation-ID index. No destructive migration fallback is configured.
+
+The local installation UUID is generated once and persisted in the private Room database. Repository writes are serialized for concurrent initialization. Runtime UI state is not stored in Room.
+
+Security baseline remains minimal: application backup is disabled, cleartext traffic is disabled, only the launcher Activity is exported, no sensitive runtime permissions are declared, and no credentials/tokens/keys/raw database contents are logged or persisted.
+
+CI verifies clean, unit tests, lint, instrumented persistence tests, verification build, debug build, and release build.
+
+During Phase 2.5 verification, CI exposed a Room KAPT annotation-processing failure under Kotlin 2.2.20. Room processing was migrated to KSP 2.2.20-2.0.4; application architecture and runtime behavior were otherwise preserved.
+
+See docs/phase-2.5-local-persistence-security.md and docs/phase-2-completion-checklist.md for the audit and evidence checklist.
+
+Phase 2 remains intentionally limited to the local Admin foundation. Authentication, backend communication, enrollment, pairing, device control, monitoring, location, camera/microphone/audio, screen sharing, app/website blocking, device restrictions, remote policies, and remote audit/event systems remain deferred.

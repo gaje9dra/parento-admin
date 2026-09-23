@@ -19,6 +19,9 @@ class AuthenticationViewModel(
 ) : ViewModel() {
     private val operationMutex = Mutex()
     private var restoreStarted = false
+    private var emailDraft = ""
+
+    fun emailDraft(): String = emailDraft
 
     private val _state = MutableStateFlow<AuthenticationState>(
         AuthenticationState.Unauthenticated,
@@ -47,6 +50,7 @@ class AuthenticationViewModel(
     }
 
     fun login(email: String, password: String) {
+        emailDraft = email.trim()
         if (_state.value is AuthenticationState.Authenticating) return
 
         viewModelScope.launch {
@@ -59,6 +63,23 @@ class AuthenticationViewModel(
                         AdminLoginCredentials(email, password),
                     )
                 ) {
+                    is OperationResult.Success -> {
+                        _state.value = AuthenticationState.Authenticated(result.value)
+                    }
+                    is OperationResult.Failure -> {
+                        _state.value = stateForFailure(result.error)
+                    }
+                }
+            }
+        }
+    }
+
+    fun validateCurrentSession() {
+        if (_state.value !is AuthenticationState.Authenticated) return
+
+        viewModelScope.launch {
+            operationMutex.withLock {
+                when (val result = repository.getCurrentAuthenticatedAdmin()) {
                     is OperationResult.Success -> {
                         _state.value = AuthenticationState.Authenticated(result.value)
                     }

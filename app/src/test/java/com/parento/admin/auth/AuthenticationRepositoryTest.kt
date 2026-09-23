@@ -170,9 +170,9 @@ private class FakeApi(
         OperationResult.Success(
             AuthenticatedAdmin("admin-1", "admin@example.com", "ACTIVE", null),
         ),
-    private var currentCalls: Int = 0
     private val logoutResult: OperationResult<Unit> = OperationResult.Success(Unit),
 ) : AuthenticationApi {
+    private var currentCalls = 0
     override suspend fun login(
         credentials: AdminLoginCredentials,
     ): OperationResult<AuthenticationSession> = loginResult

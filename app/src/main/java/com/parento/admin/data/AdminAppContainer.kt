@@ -1,8 +1,11 @@
 package com.parento.admin.data
 
 import android.content.Context
+import com.parento.admin.communication.AuthenticationApiClient
+import com.parento.admin.config.AdminApplicationConfig
 import com.parento.admin.data.local.LocalDatabaseFactory
 import com.parento.admin.data.local.ParentoAdminDatabase
+import com.parento.admin.security.SecureSessionStore
 
 class AdminAppContainer(context: Context) : AutoCloseable {
     private val applicationContext = context.applicationContext
@@ -13,6 +16,19 @@ class AdminAppContainer(context: Context) : AutoCloseable {
 
     val localStateRepository: LocalStateRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         RoomLocalStateRepository(database.localApplicationStateDao())
+    }
+
+    val secureSessionStore: SecureSessionStore by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        SecureSessionStore(applicationContext)
+    }
+
+    val authenticationRepository: AuthenticationRepositoryImpl by lazy(
+        LazyThreadSafetyMode.SYNCHRONIZED,
+    ) {
+        AuthenticationRepositoryImpl(
+            api = AuthenticationApiClient(AdminApplicationConfig.get()),
+            secureStore = secureSessionStore,
+        )
     }
 
     override fun close() {

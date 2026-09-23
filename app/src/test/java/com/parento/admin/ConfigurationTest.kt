@@ -70,6 +70,16 @@ class ConfigurationTest {
     }
 
     @Test
+    fun backendUrlRejectsUnexpectedPathAndQuery() {
+        assertThrows(IllegalArgumentException::class.java) {
+            config(backendBaseUrl = "https://backend.example.invalid/api")
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            config(backendBaseUrl = "https://backend.example.invalid?token=secret")
+        }
+    }
+
+    @Test
     fun productionDiagnosticsMustBeDisabled() {
         val result = config(
             environment = AppEnvironment.PRODUCTION,

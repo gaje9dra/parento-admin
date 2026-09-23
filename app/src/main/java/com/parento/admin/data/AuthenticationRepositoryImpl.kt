@@ -4,14 +4,14 @@ import com.parento.admin.auth.AdminLoginCredentials
 import com.parento.admin.auth.AuthenticatedAdmin
 import com.parento.admin.auth.AuthenticationRepository
 import com.parento.admin.auth.AuthenticationSession
-import com.parento.admin.communication.AuthenticationApiClient
+import com.parento.admin.communication.AuthenticationApi
 import com.parento.admin.domain.AdminError
 import com.parento.admin.domain.OperationResult
-import com.parento.admin.security.SecureSessionStore
+import com.parento.admin.security.SessionStore
 
 class AuthenticationRepositoryImpl(
-    private val api: AuthenticationApiClient,
-    private val secureStore: SecureSessionStore,
+    private val api: AuthenticationApi,
+    private val secureStore: SessionStore,
 ) : AuthenticationRepository {
 
     override suspend fun login(

@@ -15,4 +15,5 @@
     <string name="devices_placeholder">Device management is reserved for a future phase. No device data is loaded here.</string>
     <string name="policies_placeholder">Policy management is reserved for a future phase. No policy data is loaded here.</string>
     <string name="settings_placeholder">Settings are reserved for a future phase.</string>
+    <string name="logout">Sign out</string>
 </resources>

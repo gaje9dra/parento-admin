@@ -343,3 +343,88 @@ Still intentionally not implemented:
 - hidden monitoring
 - covert surveillance
 - Android security bypasses
+
+## Phase 1.4 — Application Lifecycle, Navigation & UI Shell
+
+Phase 1.4 establishes the Admin application startup, lifecycle-aware UI shell, root navigation, typed UI state, reusable loading/empty/error states, accessibility foundation, and a minimal dashboard. It does not implement authentication, device management, backend communication, or other future management functionality.
+
+### UI architecture
+
+The project was already using Android Views rather than Jetpack Compose, so Phase 1.4 preserves that framework.
+
+```text
+ParentoAdminApplication
+        |
+        v
+    MainActivity
+        |
+        v
+   AdminNavigator
+        |
+        +---- AdminHomeScreen
+        |         |
+        |         +---- AdminHomeViewModel
+        |         |
+        |         +---- AdminUiState
+        |
+        +---- Future placeholder destinations
+```
+
+`AdminHomeViewModel` owns a strongly typed `StateFlow<AdminUiState>`. UI rendering is driven by that state and the ViewModel has no Activity or View references.
+
+UI states are `Loading`, `Empty`, `Content`, and `Error`. No fake network requests or fake device records are created.
+
+`MainActivity` collects state with `repeatOnLifecycle(STARTED)`, and the ViewModel survives normal Activity recreation. Window insets are applied with `WindowInsetsCompat`.
+
+### Admin navigation
+
+Current root destinations are:
+
+- Home / Dashboard — implemented shell.
+- Devices — placeholder only.
+- Policies — placeholder only.
+- Settings — placeholder only.
+
+The Phase 1.2 `presentation/NavigationDestination` contract remains unchanged as a future management-navigation contract.
+
+### Initial Admin home
+
+The home screen provides Parento Admin branding, a neutral empty managed-device state, and navigation entry points for future sections. It does not show fake devices, connection status, statistics, or backend results.
+
+### Reusable states and accessibility
+
+`AdminStateViews` provides accessible loading, neutral empty, and safe error states with optional retry support. Error messages are mapped from domain errors without exposing stack traces, tokens, passwords, backend secrets, or infrastructure details.
+
+Interactive controls use a minimum 48dp height. Text remains resource-backed and supports Android font scaling. The layout avoids absolute positioning and applies system-bar insets.
+
+### Dependencies
+
+Phase 1.4 adds only AndroidX lifecycle runtime/ViewModel support:
+
+- `androidx.lifecycle:lifecycle-runtime-ktx:2.9.3`
+- `androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.3`
+
+No unrelated dependency upgrades were performed.
+
+### Testing and verification
+
+JVM tests cover root navigation defaults/transitions, typed dashboard state transitions, empty-list handling, and safe error messaging.
+
+The repository environment available during implementation did not provide a local Android SDK/Gradle runtime, so Gradle build, unit-test execution, Android lint, static analysis, UI tests, and APK generation were not executed here. The expected commands remain:
+
+```bash
+./gradlew assembleDebug
+./gradlew test
+./gradlew lint
+./gradlew assembleRelease
+```
+
+### Cross-repository requirements
+
+No other Parento repository was modified.
+
+`gaje9dra/parento-backend` will later need authenticated/authorized contracts for administrator sessions, managed-device listing/details, policy operations, events, and realtime communication.
+
+`gaje9dra/parento-managed` will later need authorized managed-device contracts for enrollment, status, policy application, and other explicitly permitted management operations.
+
+Those are documentation-level future requirements only for Phase 1.4.

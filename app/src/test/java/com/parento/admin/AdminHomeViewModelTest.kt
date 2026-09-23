@@ -1,5 +1,6 @@
 package com.parento.admin
 
+import androidx.lifecycle.SavedStateHandle
 import com.parento.admin.domain.AdminError
 import com.parento.admin.domain.ManagedDevice
 import com.parento.admin.domain.ConnectionState
@@ -42,6 +43,35 @@ class AdminHomeViewModelTest {
         val viewModel = AdminHomeViewModel()
         viewModel.showDevices(emptyList())
         assertEquals(AdminUiState.Empty, viewModel.uiState.value)
+    }
+
+    @Test
+    fun stateIsRestoredFromSavedStateHandle() {
+        val savedState = SavedStateHandle()
+        val original = AdminHomeViewModel(savedState)
+        original.showError(AdminError.Backend)
+
+        val recreated = AdminHomeViewModel(savedState)
+
+        assertEquals(original.uiState.value, recreated.uiState.value)
+    }
+
+    @Test
+    fun contentRestoresToNeutralStateWithoutPersistingDeviceData() {
+        val savedState = SavedStateHandle()
+        val original = AdminHomeViewModel(savedState)
+        val device = ManagedDevice(
+            deviceId = "device-1",
+            displayName = "Test Device",
+            connectionState = ConnectionState.CONNECTED,
+            enrollmentState = EnrollmentState.ENROLLED,
+            status = DeviceStatus.CONNECTED,
+        )
+        original.showDevices(listOf(device))
+
+        val recreated = AdminHomeViewModel(savedState)
+
+        assertEquals(AdminUiState.Empty, recreated.uiState.value)
     }
 
     @Test

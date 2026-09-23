@@ -49,7 +49,16 @@ class RoomLocalStateRepository(
         writeMutex.withLock {
             runStorageOperation {
                 val current = dao.read()
-                current?.installationId?.takeIf { it.isNotBlank() } ?: run {
+                current?.installationId?.takeIf { it.isNotBlank() }?.also {
+                    if (!isValidInstallationId(it)) {
+                        throw IllegalStateException("Invalid persisted installation identity")
+                    }
+                    if (current.installationCreatedAtEpochMillis != null &&
+                        current.installationCreatedAtEpochMillis <= 0L
+                    ) {
+                        throw IllegalStateException("Invalid persisted installation timestamp")
+                    }
+                } ?: run {
                     val now = System.currentTimeMillis()
                     val id = UUID.randomUUID().toString()
                     dao.upsert(
@@ -70,10 +79,16 @@ class RoomLocalStateRepository(
         writeMutex.withLock {
             runStorageOperation {
                 val current = dao.read()
-                val id = current?.installationId?.takeIf { it.isNotBlank() }
-                    ?: UUID.randomUUID().toString()
-                val createdAt = current?.installationCreatedAtEpochMillis
-                    ?: initializedAtEpochMillis
+                val id = current?.installationId?.takeIf { it.isNotBlank() }?.also {
+                    if (!isValidInstallationId(it)) {
+                        throw IllegalStateException("Invalid persisted installation identity")
+                    }
+                } ?: UUID.randomUUID().toString()
+                val createdAt = current?.installationCreatedAtEpochMillis?.also {
+                    if (it <= 0L) {
+                        throw IllegalStateException("Invalid persisted installation timestamp")
+                    }
+                } ?: initializedAtEpochMillis
                 val updated = (current ?: LocalApplicationStateEntity()).copy(
                     installationId = id,
                     installationCreatedAtEpochMillis = createdAt,
@@ -115,7 +130,15 @@ class RoomLocalStateRepository(
 
 private class InvalidLocalStateTransitionException : IllegalStateException()
 
-private fun LocalApplicationStateEntity.toDomain(): LocalApplicationState =
+private fun LocalApplicationStateEntity.toDomain(): LocalApplicationState {
+    if (!installationId.isNullOrBlank() && !isValidInstallationId(installationId)) {
+        throw IllegalStateException("Invalid persisted installation identity")
+    }
+    if (installationCreatedAtEpochMillis != null && installationCreatedAtEpochMillis <= 0L) {
+        throw IllegalStateException("Invalid persisted installation timestamp")
+    }
+
+    return LocalApplicationState(
     LocalApplicationState(
         stateVersion = stateVersion,
         lastSynchronizedAtEpochMillis = lastSynchronizedAtEpochMillis,
@@ -126,6 +149,7 @@ private fun LocalApplicationStateEntity.toDomain(): LocalApplicationState =
             .getOrElse { throw IllegalStateException("Invalid local setup state") },
         lastInitializedAtEpochMillis = lastInitializedAtEpochMillis,
     )
+}
 
 private fun LocalApplicationState.toEntity() =
     LocalApplicationStateEntity(
@@ -137,3 +161,7 @@ private fun LocalApplicationState.toEntity() =
         setupState = setupState.name,
         lastInitializedAtEpochMillis = lastInitializedAtEpochMillis,
     )
+
+
+private fun isValidInstallationId(value: String): Boolean =
+    runCatching { UUID.fromString(value) }.isSuccess

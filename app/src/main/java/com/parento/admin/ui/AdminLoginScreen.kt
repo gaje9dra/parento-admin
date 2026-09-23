@@ -63,7 +63,7 @@ class AdminLoginScreen(
         }
         val password = TextInputEditText(root.context).apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-            singleLine = true
+            setSingleLine(true)
         }
         passwordLayout.addView(password)
         root.addView(

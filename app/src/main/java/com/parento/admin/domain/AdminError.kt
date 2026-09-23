@@ -11,6 +11,7 @@ sealed interface AdminError {
     data object SessionRevoked : AdminError
     data object Validation : AdminError
     data object ServerUnavailable : AdminError
+    data object AuthenticationRateLimited : AdminError
     data object UnknownAuthentication : AdminError
     data class DeviceNotFound(val deviceId: String) : AdminError
     data object Policy : AdminError

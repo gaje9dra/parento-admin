@@ -154,6 +154,8 @@ class AuthenticationApiClient(
         return when {
             status == 401 && code == "INVALID_CREDENTIALS" -> AdminError.InvalidCredentials
             status == 401 && code == "SESSION_REVOKED" -> AdminError.SessionRevoked
+            status == 401 && code == "ACCOUNT_DISABLED" -> AdminError.AccountDisabled
+            status == 401 && code == "AUTHENTICATION_REQUIRED" -> AdminError.SessionExpired
             status == 401 -> AdminError.SessionExpired
             status == 403 && code == "ACCOUNT_DISABLED" -> AdminError.AccountDisabled
             status == 403 -> AdminError.Authorization

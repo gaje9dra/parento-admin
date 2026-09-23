@@ -8,5 +8,6 @@ sealed interface AdminError {
     data object Policy : AdminError
     data object Backend : AdminError
     data object LocalStorage : AdminError
+    data object InvalidState : AdminError
     data object Unknown : AdminError
 }

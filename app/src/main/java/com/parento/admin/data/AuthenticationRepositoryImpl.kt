@@ -114,6 +114,16 @@ class AuthenticationRepositoryImpl(
                         }
                     }
                 } else {
+                    if (
+                        current.error in setOf(
+                            AdminError.SessionExpired,
+                            AdminError.SessionRevoked,
+                            AdminError.AccountDisabled,
+                            AdminError.Authorization,
+                        )
+                    ) {
+                        secureStore.clearSession()
+                    }
                     current
                 }
             }

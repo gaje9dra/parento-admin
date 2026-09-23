@@ -1,0 +1,10 @@
+<resources>
+    <string name="login_title">Parento Admin</string>
+    <string name="login_subtitle">Sign in with your administrator account.</string>
+    <string name="login_email">Administrator email</string>
+    <string name="login_password">Password</string>
+    <string name="login_button">Sign in</string>
+    <string name="login_loading">Signing in…</string>
+    <string name="login_invalid_email">Enter a valid email address.</string>
+    <string name="login_invalid_password">Enter your password.</string>
+</resources>

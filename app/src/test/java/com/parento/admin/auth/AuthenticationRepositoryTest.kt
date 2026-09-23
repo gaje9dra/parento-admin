@@ -26,7 +26,7 @@ class AuthenticationRepositoryTest {
         val repository = AuthenticationRepositoryImpl(api, store)
 
         val result = repository.login(
-            AdminLoginCredentials("admin@example.com", "valid password"),
+            AdminLoginCredentials("admin@example.com", "valid administrator password"),
         )
 
         assertEquals(OperationResult.Success(admin), result)
@@ -56,7 +56,7 @@ class AuthenticationRepositoryTest {
         val repository = AuthenticationRepositoryImpl(api, store)
 
         val result = repository.login(
-            AdminLoginCredentials("admin@example.com", "wrong"),
+            AdminLoginCredentials("admin@example.com", "wrong administrator password"),
         )
 
         assertEquals(OperationResult.Failure(AdminError.InvalidCredentials), result)

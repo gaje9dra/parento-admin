@@ -137,7 +137,11 @@ class AuthenticationApiClient(
             id = json.getString("id"),
             email = json.getString("email"),
             status = json.getString("status"),
-            lastAuthenticatedAt = json.optString("lastAuthenticatedAt", null),
+            lastAuthenticatedAt = if (json.has("lastAuthenticatedAt") && !json.isNull("lastAuthenticatedAt")) {
+                json.getString("lastAuthenticatedAt")
+            } else {
+                null
+            },
         )
 
     private fun parseTimestamp(value: String): Long =

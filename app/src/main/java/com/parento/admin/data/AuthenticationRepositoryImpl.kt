@@ -40,10 +40,10 @@ class AuthenticationRepositoryImpl(
         val session = secureStore.readSession()
             ?: return OperationResult.Success(Unit)
 
-        val backendResult = api.logout(session)
-        // Local logout is authoritative for this installation. Network success is
-        // not required before stale credentials are removed locally.
+        // Clear local credentials before waiting on the network so logout can
+        // never leave a stale authenticated session behind while the request is pending.
         secureStore.clearSession()
+        val backendResult = api.logout(session)
 
         return when (backendResult) {
             is OperationResult.Success -> OperationResult.Success(Unit)
@@ -176,7 +176,16 @@ class AuthenticationRepositoryImpl(
                 }
             }
             is OperationResult.Failure -> {
-                secureStore.clearSession()
+                when (refreshed.error) {
+                    AdminError.SessionExpired,
+                    AdminError.SessionRevoked,
+                    AdminError.AccountDisabled,
+                    AdminError.Authorization,
+                    AdminError.InvalidCredentials -> {
+                        secureStore.clearSession()
+                    }
+                    else -> Unit
+                }
                 refreshed
             }
         }

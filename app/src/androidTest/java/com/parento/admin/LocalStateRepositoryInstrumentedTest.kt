@@ -6,13 +6,17 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.parento.admin.data.LocalApplicationState
 import com.parento.admin.data.RoomLocalStateRepository
+import com.parento.admin.data.local.LocalApplicationStateEntity
 import com.parento.admin.data.local.ParentoAdminDatabase
 import com.parento.admin.domain.AdminError
+import com.parento.admin.domain.AdminLocalSetupState
 import com.parento.admin.domain.OperationResult
+import java.util.UUID
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -44,11 +48,40 @@ class LocalStateRepositoryInstrumentedTest {
     }
 
     @Test
-    fun writeAndReadRoundTrip() = runBlocking {
+    fun localInstallationIdIsCreatedAndStable() = runBlocking {
+        val first = repository.getLocalInstallationId()
+        val second = repository.getLocalInstallationId()
+
+        assertTrue(first is OperationResult.Success)
+        assertTrue(second is OperationResult.Success)
+        val firstId = (first as OperationResult.Success).value
+        val secondId = (second as OperationResult.Success).value
+        assertEquals(firstId, secondId)
+        UUID.fromString(firstId)
+    }
+
+    @Test
+    fun initializePersistsIdentityAndSafeInitialState() = runBlocking {
+        val initializedAt = 1234L
+        val result = repository.initializeLocalState(initializedAt)
+
+        assertTrue(result is OperationResult.Success)
+        val state = (result as OperationResult.Success).value
+        assertNotNull(state.installationId)
+        assertEquals(AdminLocalSetupState.UNCONFIGURED, state.setupState)
+        assertTrue(state.initialized)
+        assertEquals(initializedAt, state.lastInitializedAtEpochMillis)
+        assertEquals(OperationResult.Success(state), repository.read())
+    }
+
+    @Test
+    fun writeAndReadRoundTripPreservesPhase22State() = runBlocking {
         val expected = LocalApplicationState(
-            stateVersion = 1,
-            lastSynchronizedAtEpochMillis = 1234L,
             initialized = true,
+            installationId = "installation-test",
+            installationCreatedAtEpochMillis = 1000L,
+            setupState = AdminLocalSetupState.UNCONFIGURED,
+            lastInitializedAtEpochMillis = 1234L,
         )
 
         assertEquals(OperationResult.Success(Unit), repository.write(expected))
@@ -56,17 +89,26 @@ class LocalStateRepositoryInstrumentedTest {
     }
 
     @Test
-    fun updateReplacesExistingState() = runBlocking {
-        repository.write(LocalApplicationState(initialized = false))
-
-        val updated = LocalApplicationState(
-            stateVersion = 1,
-            lastSynchronizedAtEpochMillis = 5678L,
+    fun observeEmitsPersistedState() = runBlocking {
+        val expected = LocalApplicationState(
             initialized = true,
+            installationId = "installation-observed",
         )
-        repository.write(updated)
+        repository.write(expected)
 
-        assertEquals(OperationResult.Success(updated), repository.read())
+        assertEquals(OperationResult.Success(expected), repository.observe().first())
+    }
+
+    @Test
+    fun invalidPersistedSetupStateMapsToLocalStorageError() = runBlocking {
+        database.localApplicationStateDao().upsert(
+            LocalApplicationStateEntity(setupState = "INVALID"),
+        )
+
+        val result = repository.read()
+
+        assertTrue(result is OperationResult.Failure)
+        assertEquals(AdminError.LocalStorage, (result as OperationResult.Failure).error)
     }
 
     @Test
@@ -75,14 +117,6 @@ class LocalStateRepositoryInstrumentedTest {
 
         assertEquals(OperationResult.Success(Unit), repository.clear())
         assertEquals(OperationResult.Success(null), repository.read())
-    }
-
-    @Test
-    fun observeEmitsPersistedState() = runBlocking {
-        val expected = LocalApplicationState(initialized = true)
-        repository.write(expected)
-
-        assertEquals(OperationResult.Success(expected), repository.observe().first())
     }
 
     @Test

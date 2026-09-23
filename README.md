@@ -793,3 +793,92 @@ The backend remains an external dependency. No changes are made to gaje9dra/pare
 Release builds retain HTTPS-only transport and cleartext traffic disabled. The authentication client does not disable TLS validation, accept arbitrary certificates, or provide HTTP fallback.
 
 No managed-device enrollment, pairing, device synchronization, realtime communication, FCM, WebSockets, device monitoring, location, camera, microphone, audio, screen sharing, app/site blocking, device restrictions, remote policies, or remote commands are implemented.
+
+## Phase 3.2 — Admin Authentication Hardening & Session Security
+
+Phase 3.2 hardens the existing Phase 3.1 Android authentication boundary without adding device-management functionality.
+
+### Authentication state
+
+The Admin app uses one explicit authentication state machine:
+- Unauthenticated
+- Authenticating
+- Authenticated
+- AuthenticationError
+- SessionExpired
+- SessionRevoked
+- AccountDisabled
+
+Authentication, session restoration, foreground validation, and logout operations are serialized so duplicate login submissions and logout/login races cannot leave the UI in an inconsistent authenticated state.
+
+### Secure session storage
+
+Authentication credentials are stored only inside the existing SecureSessionStore.
+
+The store uses Android Keystore-backed AES-GCM encryption and private application SharedPreferences only as encrypted ciphertext storage. Passwords are never persisted. Access and refresh tokens are not stored in Room, URLs, logs, or screenshots.
+
+Malformed encrypted session data is discarded deterministically. Logout removes the encrypted session synchronously from local storage.
+
+The existing local installation UUID remains in Room and is not used as administrator identity.
+
+### Authenticated request boundary
+
+AuthenticationApiClient is the single authentication API boundary. Login, refresh, current-admin, and logout are centralized there.
+
+Bearer credentials are attached only by this client. Feature-specific UI code does not construct authorization headers.
+
+The client validates required response fields and token lengths, maps authentication HTTP failures into domain errors, treats malformed successful responses as authentication failures, and does not retry invalid credentials automatically.
+
+### Session expiration and unauthorized responses
+
+A rejected current-admin request causes the repository to invalidate the local session when the failure represents revocation, account disablement, or authorization rejection.
+
+For an expired or invalid access credential, the repository performs one refresh attempt using the existing refresh endpoint. The refreshed session is immediately verified through current-admin.
+
+There is no infinite retry loop and no reuse of an invalid access credential.
+
+If refresh fails, the local session is cleared and the application returns to the unauthenticated flow.
+
+The app also validates an authenticated session when returning to the foreground. This is a server-backed check rather than a local timer and prevents stale authenticated UI from surviving indefinitely.
+
+### Logout
+
+Logout attempts backend revocation using the existing endpoint, but local logout is not dependent on network success.
+
+The local encrypted session is cleared regardless of backend logout success. The UI always transitions to Unauthenticated.
+
+### Navigation guard
+
+MainActivity renders the authenticated Admin shell only for AuthenticationState.Authenticated.
+
+All unauthenticated, expired, revoked, and disabled states render the login flow. Protected destinations cannot remain active after the authentication state leaves Authenticated.
+
+The Activity also uses FLAG_SECURE to prevent ordinary screenshots and screen capture of the Admin UI.
+
+### Login hardening
+
+The login UI masks passwords, clears the password field after submission, disables sign-in while authentication is in progress, prevents duplicate login operations at the ViewModel boundary, preserves the non-sensitive email draft when the login view is recreated, and never persists the password.
+
+### Backend contract dependency
+
+The Admin app consumes the existing Phase 3.1 backend contract:
+- POST /api/v1/auth/admin/login
+- POST /api/v1/auth/admin/refresh
+- GET /api/v1/auth/admin/me
+- POST /api/v1/auth/admin/logout
+
+The backend currently represents invalid, expired, and revoked authenticated sessions as HTTP 401 with the generic AUTHENTICATION_REQUIRED error. Therefore the Android app cannot truthfully distinguish every 401 as expired versus revoked.
+
+The current backend login contract also returns INVALID_CREDENTIALS for disabled administrators. The Android app supports an explicit ACCOUNT_DISABLED contract if the backend later exposes one, but it does not invent that distinction locally.
+
+No backend repository was modified for Phase 3.2 Admin work.
+
+### Testing scope
+
+Phase 3.2 strengthens coverage for expired sessions, refresh and current-admin verification, local logout when backend logout fails, authentication lifecycle states, serialized authentication operations, malformed encrypted-session cleanup, unauthorized/forbidden error mapping, and secure session restoration.
+
+Android build, JVM tests, instrumentation tests, and lint must be run through the repository's Gradle/CI environment before release. No generated secrets or signing material are committed.
+
+### Deferred
+
+Phase 3.2 does not implement enrollment, QR pairing, managed-device lists, remote commands, location, camera, microphone, audio streaming, screen sharing, application blocking, website filtering, device locking, remote wipe, policy management, notification control, monitoring, or covert surveillance.

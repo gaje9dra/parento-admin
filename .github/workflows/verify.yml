@@ -27,6 +27,9 @@ jobs:
         with:
           gradle-version: '8.13'
 
+      - name: Clean
+        run: gradle clean
+
       - name: Unit tests
         run: gradle test
 
@@ -42,6 +45,9 @@ jobs:
 
       - name: Debug build
         run: gradle assembleDebug
+
+      - name: Verification build
+        run: gradle assembleVerification
 
       - name: Release build
         run: gradle assembleRelease

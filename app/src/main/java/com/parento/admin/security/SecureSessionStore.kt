@@ -21,15 +21,20 @@ class SecureSessionStore(context: Context) : SecurityStore, SessionStore {
 
     override fun hasAuthenticatedSession(): Boolean = readSession() != null
 
-    override fun readSession(): AuthenticationSession? =
-        preferences.getString(SESSION_KEY, null)?.let { decrypt(it) }
+    override fun readSession(): AuthenticationSession? {
+        val encoded = preferences.getString(SESSION_KEY, null) ?: return null
+        return decrypt(encoded) ?: run {
+            preferences.edit().remove(SESSION_KEY).commit()
+            null
+        }
+    }
 
     override fun saveSession(session: AuthenticationSession) {
-        preferences.edit().putString(SESSION_KEY, encrypt(session)).apply()
+        preferences.edit().putString(SESSION_KEY, encrypt(session)).commit()
     }
 
     override fun clearSession() {
-        preferences.edit().remove(SESSION_KEY).apply()
+        preferences.edit().remove(SESSION_KEY).commit()
     }
 
     private fun encrypt(session: AuthenticationSession): String {

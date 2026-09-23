@@ -5,6 +5,8 @@ import android.content.SharedPreferences
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import com.parento.admin.auth.AuthenticatedAdmin
+import com.parento.admin.auth.AuthenticationSession
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -17,8 +19,7 @@ class SecureSessionStore(context: Context) : SecurityStore, SessionStore {
     private val preferences: SharedPreferences =
         context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    override fun hasAuthenticatedSession(): Boolean =
-        readSession() != null
+    override fun hasAuthenticatedSession(): Boolean = readSession() != null
 
     override fun readSession(): AuthenticationSession? =
         preferences.getString(SESSION_KEY, null)?.let { decrypt(it) }

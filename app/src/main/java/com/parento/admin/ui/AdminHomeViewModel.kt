@@ -79,6 +79,7 @@ class AdminHomeViewModel(
         AdminError.Policy -> "The policy operation could not be completed."
         AdminError.Backend -> "The management service is temporarily unavailable."
         AdminError.LocalStorage -> "Local application data could not be read."
+        AdminError.InvalidState -> "The requested local state transition is not valid."
         AdminError.Unknown -> "Something went wrong. Please try again."
     }
 

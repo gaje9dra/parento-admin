@@ -151,8 +151,15 @@ private fun LocalApplicationStateEntity.toDomain(): LocalApplicationState {
     )
 }
 
-private fun LocalApplicationState.toEntity() =
-    LocalApplicationStateEntity(
+private fun LocalApplicationState.toEntity(): LocalApplicationStateEntity {
+    if (!installationId.isNullOrBlank() && !isValidInstallationId(installationId)) {
+        throw IllegalStateException("Invalid local installation identity")
+    }
+    if (installationCreatedAtEpochMillis != null && installationCreatedAtEpochMillis <= 0L) {
+        throw IllegalStateException("Invalid local installation timestamp")
+    }
+
+    return LocalApplicationStateEntity(
         stateVersion = stateVersion,
         lastSynchronizedAtEpochMillis = lastSynchronizedAtEpochMillis,
         initialized = initialized,

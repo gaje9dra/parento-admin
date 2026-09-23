@@ -115,6 +115,15 @@ class AdminLoginScreen(
             is com.parento.admin.auth.AuthenticationState.AuthenticationError -> {
                 status.text = state.message
             }
+            com.parento.admin.auth.AuthenticationState.SessionExpired -> {
+                status.text = root.context.getString(R.string.session_expired)
+            }
+            com.parento.admin.auth.AuthenticationState.SessionRevoked -> {
+                status.text = root.context.getString(R.string.session_revoked)
+            }
+            com.parento.admin.auth.AuthenticationState.AccountDisabled -> {
+                status.text = root.context.getString(R.string.account_disabled)
+            }
             is com.parento.admin.auth.AuthenticationState.Authenticated -> Unit
         }
         root.addView(status)

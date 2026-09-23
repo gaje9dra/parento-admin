@@ -13,21 +13,21 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import org.json.JSONObject
 
-class SecureSessionStore(context: Context) : SecurityStore {
+class SecureSessionStore(context: Context) : SecurityStore, SessionStore {
     private val preferences: SharedPreferences =
         context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     override fun hasAuthenticatedSession(): Boolean =
         readSession() != null
 
-    fun readSession(): AuthenticationSession? =
+    override fun readSession(): AuthenticationSession? =
         preferences.getString(SESSION_KEY, null)?.let { decrypt(it) }
 
-    fun saveSession(session: AuthenticationSession) {
+    override fun saveSession(session: AuthenticationSession) {
         preferences.edit().putString(SESSION_KEY, encrypt(session)).apply()
     }
 
-    fun clearSession() {
+    override fun clearSession() {
         preferences.edit().remove(SESSION_KEY).apply()
     }
 

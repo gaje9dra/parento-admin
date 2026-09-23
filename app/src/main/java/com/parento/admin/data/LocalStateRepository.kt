@@ -139,7 +139,6 @@ private fun LocalApplicationStateEntity.toDomain(): LocalApplicationState {
     }
 
     return LocalApplicationState(
-    LocalApplicationState(
         stateVersion = stateVersion,
         lastSynchronizedAtEpochMillis = lastSynchronizedAtEpochMillis,
         initialized = initialized,
@@ -168,7 +167,7 @@ private fun LocalApplicationState.toEntity(): LocalApplicationStateEntity {
         setupState = setupState.name,
         lastInitializedAtEpochMillis = lastInitializedAtEpochMillis,
     )
-
+}
 
 private fun isValidInstallationId(value: String): Boolean =
     runCatching { UUID.fromString(value) }.isSuccess

@@ -46,7 +46,7 @@ class AdminLoginScreen(
         val email = TextInputEditText(root.context).apply {
             setText(viewModel.emailDraft())
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
-            singleLine = true
+            setSingleLine(true)
         }
         emailLayout.addView(email)
         root.addView(

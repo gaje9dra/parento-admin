@@ -88,6 +88,35 @@ class AuthenticationRepositoryTest {
         assertEquals("new-access", store.session?.accessToken)
     }
 
+
+    @Test
+    fun revokedSessionIsCleared() = runBlocking {
+        val store = FakeStore().apply { session = session() }
+        val repository = AuthenticationRepositoryImpl(
+            FakeApi(currentResult = OperationResult.Failure(AdminError.SessionRevoked)),
+            store,
+        )
+
+        val result = repository.getCurrentAuthenticatedAdmin()
+
+        assertEquals(OperationResult.Failure<AuthenticatedAdmin>(AdminError.SessionRevoked), result)
+        assertNull(store.session)
+    }
+
+    @Test
+    fun disabledAccountSessionIsCleared() = runBlocking {
+        val store = FakeStore().apply { session = session() }
+        val repository = AuthenticationRepositoryImpl(
+            FakeApi(currentResult = OperationResult.Failure(AdminError.AccountDisabled)),
+            store,
+        )
+
+        val result = repository.getCurrentAuthenticatedAdmin()
+
+        assertEquals(OperationResult.Failure<AuthenticatedAdmin>(AdminError.AccountDisabled), result)
+        assertNull(store.session)
+    }
+
     @Test
     fun logoutClearsSessionEvenWhenBackendIsUnavailable() = runBlocking {
         val store = FakeStore().apply { session = session() }

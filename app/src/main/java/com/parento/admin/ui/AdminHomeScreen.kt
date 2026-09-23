@@ -26,30 +26,24 @@ class AdminHomeScreen(
             )
         }
 
-        val title = MaterialTextView(root.context).apply {
-            text = getString(R.string.dashboard_title)
+        content.addView(MaterialTextView(root.context).apply {
+            text = root.context.getString(R.string.dashboard_title)
             textSize = 28f
-        }
-        content.addView(title)
-
-        val subtitle = MaterialTextView(root.context).apply {
-            text = getString(R.string.dashboard_subtitle)
+        })
+        content.addView(MaterialTextView(root.context).apply {
+            text = root.context.getString(R.string.dashboard_subtitle)
             textSize = 16f
             setPadding(0, resources.getDimensionPixelSize(R.dimen.item_spacing), 0, resources.getDimensionPixelSize(R.dimen.section_spacing))
-        }
-        content.addView(subtitle)
+        })
 
         when (state) {
             AdminUiState.Loading -> content.addView(AdminStateViews.loading(root.context))
             AdminUiState.Empty -> content.addView(AdminStateViews.empty(root.context))
             is AdminUiState.Content -> renderContent(content, state)
             is AdminUiState.Error -> content.addView(
-                AdminStateViews.error(
-                    context = root.context,
-                    message = state.message,
-                    canRetry = state.canRetry,
-                    onRetry = { viewModel.showEmpty() },
-                ),
+                AdminStateViews.error(root.context, state.message, state.canRetry) {
+                    viewModel.showEmpty()
+                },
             )
         }
 
@@ -64,17 +58,17 @@ class AdminHomeScreen(
     }
 
     private fun renderContent(container: LinearLayout, state: AdminUiState.Content) {
-        val message = MaterialTextView(root.context).apply {
-            text = getString(R.string.devices_available, state.managedDevices.size)
+        container.addView(MaterialTextView(root.context).apply {
+            text = root.context.getString(R.string.devices_available, state.managedDevices.size)
             textSize = 16f
-        }
-        container.addView(message)
+        })
     }
 
     private fun navigationButton(destination: AdminDestination, label: Int): View =
         MaterialButton(root.context).apply {
-            text = getString(label)
+            text = root.context.getString(label)
             minHeight = resources.getDimensionPixelSize(R.dimen.minimum_touch_target)
+            contentDescription = root.context.getString(label)
             setOnClickListener { onNavigate(destination) }
         }
 }

@@ -761,3 +761,35 @@ During Phase 2.5 verification, CI exposed a Room KAPT annotation-processing fail
 See docs/phase-2.5-local-persistence-security.md and docs/phase-2-completion-checklist.md for the audit and evidence checklist.
 
 Phase 2 remains intentionally limited to the local Admin foundation. Authentication, backend communication, enrollment, pairing, device control, monitoring, location, camera/microphone/audio, screen sharing, app/website blocking, device restrictions, remote policies, and remote audit/event systems remain deferred.
+
+## Phase 3.1 — Admin Android Authentication Foundation
+
+Phase 3.1 implements the Admin application's authentication boundary against the external Phase 3.1 backend contract.
+
+Implemented:
+
+- administrator login screen
+- authentication state: Unauthenticated, Authenticating, Authenticated, AuthenticationError
+- login validation and dedicated authentication repository
+- backend API client for login, refresh, current-admin, and logout
+- standardized backend error mapping
+- encrypted session storage using Android Keystore-backed AES-GCM
+- session restoration and expiration handling
+- refresh-and-verify flow for invalid access credentials
+- logout with backend revocation when available and local session clearing
+- authentication-aware application navigation
+- authenticated shell using the existing Admin UI architecture
+- unit coverage for valid login, invalid credentials, session expiry, refresh restoration, and logout
+- authentication cross-repository contract documentation
+
+The local Admin installation UUID remains in the existing Room boundary and is never used as the authenticated administrator identity.
+
+Authentication credentials are not stored in Room, plain SharedPreferences, source code, URLs, or logs. Password input is transient and is cleared from the UI after submission.
+
+The backend remains an external dependency. No changes are made to gaje9dra/parento-backend or gaje9dra/parento-managed.
+
+### Phase 3.1 security boundary
+
+Release builds retain HTTPS-only transport and cleartext traffic disabled. The authentication client does not disable TLS validation, accept arbitrary certificates, or provide HTTP fallback.
+
+No managed-device enrollment, pairing, device synchronization, realtime communication, FCM, WebSockets, device monitoring, location, camera, microphone, audio, screen sharing, app/site blocking, device restrictions, remote policies, or remote commands are implemented.

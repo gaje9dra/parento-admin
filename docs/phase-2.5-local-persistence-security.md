@@ -55,7 +55,7 @@ Backup is disabled because the current local state contains installation-specifi
 
 ## Dependency/build correction
 
-CI exposed an annotation-processing failure in kaptReleaseKotlin while Room 2.7.2 was processed through KAPT under Kotlin 2.2.20. Phase 2.5 moves Room processing to KSP 2.2.20-2.0.4. This is limited to the build/annotation-processing boundary and does not change application architecture.
+CI exposed an annotation-processing failure in kaptReleaseKotlin while Room 2.8.5 was processed through KAPT under Kotlin 2.2.20. Phase 2.5 moves Room 2.8.5 processing to KSP 2.2.20-2.0.4. This is limited to the build/annotation-processing boundary and does not change application architecture.
 
 ## Current limitations
 

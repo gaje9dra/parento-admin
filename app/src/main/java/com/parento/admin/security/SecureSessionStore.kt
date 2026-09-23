@@ -74,7 +74,11 @@ class SecureSessionStore(context: Context) : SecurityStore, SessionStore {
                 id = json.getString("id"),
                 email = json.getString("email"),
                 status = json.getString("status"),
-                lastAuthenticatedAt = json.optString("lastAuthenticatedAt", null),
+                lastAuthenticatedAt = if (json.has("lastAuthenticatedAt") && !json.isNull("lastAuthenticatedAt")) {
+                    json.getString("lastAuthenticatedAt")
+                } else {
+                    null
+                },
             ),
             accessToken = json.getString("accessToken"),
             refreshToken = json.getString("refreshToken"),

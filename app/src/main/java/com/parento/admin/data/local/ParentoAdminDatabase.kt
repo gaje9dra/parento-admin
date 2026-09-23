@@ -7,7 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [LocalApplicationStateEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class ParentoAdminDatabase : RoomDatabase() {
@@ -28,6 +28,16 @@ abstract class ParentoAdminDatabase : RoomDatabase() {
                 database.execSQL(
                     "ALTER TABLE local_application_state " +
                         "ADD COLUMN lastInitializedAtEpochMillis INTEGER",
+                )
+            }
+        }
+
+        val MIGRATION_2_3: Migration = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS " +
+                        "index_local_application_state_installationId " +
+                        "ON local_application_state (installationId)",
                 )
             }
         }

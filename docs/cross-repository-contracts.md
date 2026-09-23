@@ -52,3 +52,33 @@ Future backend work in `gaje9dra/parento-backend` will eventually define authent
 Future managed-device work in `gaje9dra/parento-managed` will eventually define authorized enrollment, device identity, status, policy, and management contracts. Those requirements are not implemented here.
 
 The Admin app must communicate with the Managed app through authorized backend-mediated contracts rather than a direct Admin-to-Managed connection.
+
+## Phase 2 cross-repository compatibility notes
+
+The Phase 2 foundations intentionally use different local/server state models and do not require the values to be identical.
+
+### Identity boundaries
+
+- Backend admins.id, managed_devices.id, and enrollments.id are server-owned UUID identifiers.
+- Backend managed_devices.stable_identifier is a separate server-side stable device identifier.
+- Managed App installationId is a locally generated UUID for the managed installation.
+- Admin App installationId is a locally generated UUID for the Admin installation.
+- Neither Android installation ID is an authenticated backend identity.
+
+### State boundaries and future mapping
+
+The Managed App lifecycle (UNENROLLED, ENROLLING, ENROLLED, CONNECTED, DISCONNECTED, REVOKED, ERROR) is a device-side lifecycle model. The backend currently persists separate enrollment and operational status concepts (PENDING, ACTIVE, REVOKED) and must define an explicit API mapping in a future integration phase.
+
+The Admin App local setup state (UNCONFIGURED, READY) describes only the local Admin application's setup state. It is not equivalent to backend administrator status, managed-device enrollment status, or managed-device connection status.
+
+Connection state in the Managed App is runtime-only and is not a server-authoritative status contract in Phase 2.
+
+### Timestamp and serialization boundary
+
+The backend uses PostgreSQL TIMESTAMPTZ for server timestamps. Android local persistence uses epoch-millisecond numeric timestamps. A future API contract must serialize server timestamps explicitly, for example as UTC/ISO-8601 values, and convert them at the Android boundary rather than treating local epoch-millisecond fields as wire-format contracts.
+
+### Error boundary
+
+The backend exposes structured HTTP errors with an error code, message, and request ID. Android currently exposes domain-level AdminError / ManagedError values and does not perform API translation yet. A future API client layer should map backend error codes to these domain errors without leaking raw server/database exceptions to UI.
+
+These mappings are documentation-only Phase 3 dependencies; no API client, authentication, synchronization, enrollment, or realtime functionality is implemented here.

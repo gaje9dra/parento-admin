@@ -148,12 +148,13 @@ class MainActivity : AppCompatActivity() {
     private fun renderAuthenticatedState() {
         toolbar.menu.clear()
         toolbar.title = getString(R.string.dashboard_title)
-        toolbar.menu.add(R.string.logout)
-            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
-            .setOnMenuItemClickListener {
+        toolbar.menu.add(R.string.logout).apply {
+            setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+            setOnMenuItemClickListener {
                 authViewModel.logout()
                 true
             }
+        }
 
         contentRoot.removeAllViews()
         contentRoot.addView(FrameLayout(this).also { frame ->

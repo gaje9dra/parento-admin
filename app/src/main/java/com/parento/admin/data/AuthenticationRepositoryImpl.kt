@@ -24,7 +24,10 @@ class AuthenticationRepositoryImpl(
                 secureStore.saveSession(result.value)
                 OperationResult.Success(result.value.admin)
             }
-            is OperationResult.Failure -> result
+            is OperationResult.Failure -> {
+                secureStore.clearSession()
+                result
+            }
         }
     }
 

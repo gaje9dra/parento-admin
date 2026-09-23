@@ -13,11 +13,48 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+
+        buildConfigField("boolean", "PARENTO_FEATURE_AUTHENTICATION", "false")
+        buildConfigField("boolean", "PARENTO_FEATURE_ENROLLMENT", "false")
+        buildConfigField("boolean", "PARENTO_FEATURE_DEVICE_COMMUNICATION", "false")
+        buildConfigField("boolean", "PARENTO_FEATURE_LOCATION", "false")
+        buildConfigField("boolean", "PARENTO_FEATURE_SCREEN_SHARING", "false")
+        buildConfigField("boolean", "PARENTO_FEATURE_AUDIO", "false")
+        buildConfigField("boolean", "PARENTO_FEATURE_APPLICATION_MANAGEMENT", "false")
+        buildConfigField("boolean", "PARENTO_FEATURE_WEBSITE_FILTERING", "false")
+        buildConfigField("boolean", "PARENTO_FEATURE_DEVICE_RESTRICTIONS", "false")
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     buildTypes {
-        release {
+        getByName("debug") {
+            buildConfigField("String", "PARENTO_ENVIRONMENT", "\"development\"")
+            buildConfigField("String", "PARENTO_BACKEND_BASE_URL", "\"https://dev-backend.example.invalid\"")
+            buildConfigField("String", "PARENTO_LOG_LEVEL", "\"DEBUG\"")
+            buildConfigField("boolean", "PARENTO_LOGGING_ENABLED", "true")
+            buildConfigField("boolean", "PARENTO_REQUIRE_HTTPS", "false")
+            buildConfigField("boolean", "PARENTO_DEBUG_DIAGNOSTICS", "true")
+        }
+
+        create("test") {
+            initWith(getByName("debug"))
+            buildConfigField("String", "PARENTO_ENVIRONMENT", "\"test\"")
+            buildConfigField("String", "PARENTO_BACKEND_BASE_URL", "\"https://test-backend.example.invalid\"")
+            buildConfigField("String", "PARENTO_LOG_LEVEL", "\"INFO\"")
+            buildConfigField("boolean", "PARENTO_DEBUG_DIAGNOSTICS", "false")
+        }
+
+        getByName("release") {
             isMinifyEnabled = false
+            buildConfigField("String", "PARENTO_ENVIRONMENT", "\"production\"")
+            buildConfigField("String", "PARENTO_BACKEND_BASE_URL", "\"https://backend.example.invalid\"")
+            buildConfigField("String", "PARENTO_LOG_LEVEL", "\"WARNING\"")
+            buildConfigField("boolean", "PARENTO_LOGGING_ENABLED", "true")
+            buildConfigField("boolean", "PARENTO_REQUIRE_HTTPS", "true")
+            buildConfigField("boolean", "PARENTO_DEBUG_DIAGNOSTICS", "false")
         }
     }
 

@@ -46,9 +46,9 @@ data class AppConfig(
         require(uri.scheme == "https" || uri.scheme == "http") {
             "Backend base URL must use HTTP(S)."
         }
-        require(!uri.userInfo.isNullOrBlank()) {
+        require(uri.userInfo.isNullOrBlank()) {
             "Backend base URL must not contain embedded credentials."
-        }.not()
+        }
 
         require(uri.host != null) {
             "Backend base URL must contain a valid host."

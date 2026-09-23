@@ -4,7 +4,7 @@ import android.os.Bundle
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import androidx.activity.OnBackPressedCallback
-import androidx.activity.viewModels
+import androidx.lifecycle.ViewModelProvider
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -21,7 +21,9 @@ import com.parento.admin.ui.AdminUiState
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
-    private val viewModel: AdminHomeViewModel by viewModels()
+    private val viewModel: AdminHomeViewModel by lazy {
+        ViewModelProvider(this)[AdminHomeViewModel::class.java]
+    }
     private val navigator = AdminNavigator()
 
     private lateinit var contentRoot: FrameLayout

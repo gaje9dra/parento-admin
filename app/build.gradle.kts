@@ -25,9 +25,7 @@ android {
         buildConfigField("boolean", "PARENTO_FEATURE_DEVICE_RESTRICTIONS", "false")
     }
 
-    buildFeatures {
-        buildConfig = true
-    }
+    buildFeatures { buildConfig = true }
 
     buildTypes {
         getByName("debug") {
@@ -38,7 +36,6 @@ android {
             buildConfigField("boolean", "PARENTO_REQUIRE_HTTPS", "false")
             buildConfigField("boolean", "PARENTO_DEBUG_DIAGNOSTICS", "true")
         }
-
         create("test") {
             initWith(getByName("debug"))
             buildConfigField("String", "PARENTO_ENVIRONMENT", "\"test\"")
@@ -46,7 +43,6 @@ android {
             buildConfigField("String", "PARENTO_LOG_LEVEL", "\"INFO\"")
             buildConfigField("boolean", "PARENTO_DEBUG_DIAGNOSTICS", "false")
         }
-
         getByName("release") {
             isMinifyEnabled = false
             buildConfigField("String", "PARENTO_ENVIRONMENT", "\"production\"")
@@ -63,14 +59,14 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
+    kotlinOptions { jvmTarget = "17" }
 }
 
 dependencies {
     implementation("androidx.core:core-ktx:1.17.0")
     implementation("androidx.appcompat:appcompat:1.7.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.3")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.3")
     implementation("com.google.android.material:material:1.13.0")
     testImplementation("junit:junit:4.13.2")
 }

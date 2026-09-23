@@ -99,7 +99,7 @@ class AuthenticationRepositoryTest {
 
         val result = repository.getCurrentAuthenticatedAdmin()
 
-        assertEquals(OperationResult.Failure<AuthenticatedAdmin>(AdminError.SessionRevoked), result)
+        assertEquals(OperationResult.Failure(AdminError.SessionRevoked), result)
         assertNull(store.session)
     }
 
@@ -113,7 +113,7 @@ class AuthenticationRepositoryTest {
 
         val result = repository.getCurrentAuthenticatedAdmin()
 
-        assertEquals(OperationResult.Failure<AuthenticatedAdmin>(AdminError.AccountDisabled), result)
+        assertEquals(OperationResult.Failure(AdminError.AccountDisabled), result)
         assertNull(store.session)
     }
 
@@ -170,7 +170,7 @@ private class FakeApi(
         OperationResult.Success(
             AuthenticatedAdmin("admin-1", "admin@example.com", "ACTIVE", null),
         ),
-    private var currentCalls = 0
+    private var currentCalls: Int = 0
     private val logoutResult: OperationResult<Unit> = OperationResult.Success(Unit),
 ) : AuthenticationApi {
     override suspend fun login(

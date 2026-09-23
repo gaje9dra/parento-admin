@@ -287,7 +287,7 @@ Phase 1.3 adds unit tests for:
 - production diagnostic restrictions
 - future feature flags remaining disabled
 
-The existing JUnit 4 dependency is reused; no new verification framework was added.
+The existing JUnit 4 dependency is reused; no new testing framework was added.
 
 ### Versioning
 

@@ -116,6 +116,22 @@ class LocalStateRepositoryInstrumentedTest {
     }
 
     @Test
+    fun invalidInstallationIdIsRejectedBeforePersistence() = runBlocking {
+        val result = repository.write(
+            LocalApplicationState(
+                installationId = "not-a-uuid",
+                installationCreatedAtEpochMillis = 1L,
+            ),
+        )
+
+        assertEquals(
+            OperationResult.Failure(AdminError.LocalStorage),
+            result,
+        )
+        assertEquals(OperationResult.Success(null), repository.read())
+    }
+
+    @Test
     fun malformedPersistedInstallationIdMapsToLocalStorageError() = runBlocking {
         database.localApplicationStateDao().upsert(
             LocalApplicationStateEntity(

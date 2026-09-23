@@ -2,6 +2,7 @@ package com.parento.admin
 
 import com.parento.admin.data.LocalApplicationState
 import com.parento.admin.domain.AdminLocalSetupState
+import com.parento.admin.domain.canTransitionTo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

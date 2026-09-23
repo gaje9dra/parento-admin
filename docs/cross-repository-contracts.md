@@ -82,3 +82,36 @@ The backend uses PostgreSQL TIMESTAMPTZ for server timestamps. Android local per
 The backend exposes structured HTTP errors with an error code, message, and request ID. Android currently exposes domain-level AdminError / ManagedError values and does not perform API translation yet. A future API client layer should map backend error codes to these domain errors without leaking raw server/database exceptions to UI.
 
 These mappings are documentation-only Phase 3 dependencies; no API client, authentication, synchronization, enrollment, or realtime functionality is implemented here.
+
+## Phase 3.1 — Admin authentication contract
+
+The backend Phase 3.1 authentication foundation is now available to this Admin repository as an external API dependency.
+
+Consumed backend endpoints:
+
+- POST /api/v1/auth/admin/login
+- POST /api/v1/auth/admin/refresh
+- GET /api/v1/auth/admin/me
+- POST /api/v1/auth/admin/logout
+
+The backend returns the standardized { data, requestId } success envelope and { error: { code, message }, requestId } error envelope.
+
+The login response provides an authenticated administrator plus opaque access/refresh credentials and ISO-8601 expiration timestamps. Refresh rotates both credentials. The current-admin endpoint validates the stored access credential. Logout revokes the backend session.
+
+The Admin app keeps its local installation UUID separate from the authenticated administrator ID. Authentication credentials are never stored in Room.
+
+Authentication mapping used by this repository:
+
+| Backend contract | Admin domain |
+|---|---|
+| INVALID_CREDENTIALS / HTTP 401 | InvalidCredentials |
+| HTTP 401 for expired/invalid session | SessionExpired |
+| HTTP 400 | Validation |
+| HTTP 5xx | ServerUnavailable |
+| socket/IO failure | Network |
+| timeout | Timeout |
+| malformed/unexpected response | UnknownAuthentication |
+
+The backend currently does not expose a distinct disabled-account error; disabled administrators therefore follow the backend's generic invalid-credentials contract rather than an invented client-side distinction.
+
+No backend repository changes are made from this repository.

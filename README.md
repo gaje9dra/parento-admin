@@ -287,7 +287,7 @@ Phase 1.3 adds unit tests for:
 - production diagnostic restrictions
 - future feature flags remaining disabled
 
-The existing JUnit 4 dependency is reused; no new testing framework was added.
+The existing JUnit 4 dependency is reused; no new verification framework was added.
 
 ### Versioning
 
@@ -478,10 +478,10 @@ Build environments:
 | Build type | Environment | Diagnostics |
 |---|---|---|
 | debug | development | enabled |
-| testing | test | disabled |
+| verification | test | disabled |
 | release | production | disabled |
 
-Android reserves the BuildType name `test`, so the test environment uses the `testing` build type while retaining the `TEST` application environment.
+Android reserves the BuildType name `test`, so the test environment uses the `verification` build type while retaining the `TEST` application environment.
 
 No real production backend URL is invented. Example endpoints remain placeholders.
 
@@ -524,7 +524,7 @@ gradle assembleRelease
 The test environment build type is:
 
 ```bash
-gradle assembleTesting
+gradle assembleVerification
 ```
 
 No secrets are required for the current phase.

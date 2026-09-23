@@ -7,6 +7,6 @@ enum class AdminLocalSetupState {
 
 fun AdminLocalSetupState.canTransitionTo(target: AdminLocalSetupState): Boolean =
     when (this) {
-        UNCONFIGURED -> target == READY
-        READY -> target == UNCONFIGURED
+        AdminLocalSetupState.UNCONFIGURED -> target == AdminLocalSetupState.READY
+        AdminLocalSetupState.READY -> target == AdminLocalSetupState.UNCONFIGURED
     }

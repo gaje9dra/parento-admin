@@ -39,3 +39,16 @@ Future sensitive operations must be attributable to an authenticated and authori
 ## Repository boundary
 
 Only `gaje9dra/parento-admin` is modified by Phase 1.5. Requirements for `parento-backend` and `parento-managed` remain documentation-only.
+
+
+## Phase 2.1 local persistence boundary
+
+Only `gaje9dra/parento-admin` is modified by Phase 2.1.
+
+The local Room database is an Admin-device-local store. It is not the backend database and it does not establish a synchronization protocol.
+
+Future backend work in `gaje9dra/parento-backend` will eventually define authenticated administrator sessions, managed-device data, policy contracts, events, and realtime communication. Those requirements are not implemented here.
+
+Future managed-device work in `gaje9dra/parento-managed` will eventually define authorized enrollment, device identity, status, policy, and management contracts. Those requirements are not implemented here.
+
+The Admin app must communicate with the Managed app through authorized backend-mediated contracts rather than a direct Admin-to-Managed connection.

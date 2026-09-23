@@ -19,6 +19,9 @@ class AuthenticationViewModel(
 ) : ViewModel() {
     private val operationMutex = Mutex()
     private var restoreStarted = false
+    private var loginInFlight = false
+    private var validationInFlight = false
+    private var logoutInFlight = false
     private var emailDraft = ""
 
     fun emailDraft(): String = emailDraft
@@ -50,52 +53,76 @@ class AuthenticationViewModel(
     }
 
     fun login(email: String, password: String) {
+        if (loginInFlight) return
+        if (_state.value is AuthenticationState.Authenticated) return
+
+        loginInFlight = true
         emailDraft = email.trim()
-        if (_state.value is AuthenticationState.Authenticating) return
 
         viewModelScope.launch {
-            operationMutex.withLock {
-                if (_state.value is AuthenticationState.Authenticated) return@withLock
+            try {
+                operationMutex.withLock {
+                    if (_state.value is AuthenticationState.Authenticated) return@withLock
 
-                _state.value = AuthenticationState.Authenticating
-                when (
-                    val result = repository.login(
-                        AdminLoginCredentials(email, password),
-                    )
-                ) {
-                    is OperationResult.Success -> {
-                        _state.value = AuthenticationState.Authenticated(result.value)
-                    }
-                    is OperationResult.Failure -> {
-                        _state.value = stateForFailure(result.error)
+                    _state.value = AuthenticationState.Authenticating
+                    when (
+                        val result = repository.login(
+                            AdminLoginCredentials(email, password),
+                        )
+                    ) {
+                        is OperationResult.Success -> {
+                            _state.value = AuthenticationState.Authenticated(result.value)
+                        }
+                        is OperationResult.Failure -> {
+                            _state.value = stateForFailure(result.error)
+                        }
                     }
                 }
+            } finally {
+                loginInFlight = false
             }
         }
     }
 
     fun validateCurrentSession() {
+        if (validationInFlight) return
         if (_state.value !is AuthenticationState.Authenticated) return
+        if (loginInFlight || logoutInFlight) return
+
+        validationInFlight = true
 
         viewModelScope.launch {
-            operationMutex.withLock {
-                when (val result = repository.getCurrentAuthenticatedAdmin()) {
-                    is OperationResult.Success -> {
-                        _state.value = AuthenticationState.Authenticated(result.value)
-                    }
-                    is OperationResult.Failure -> {
-                        _state.value = stateForFailure(result.error)
+            try {
+                operationMutex.withLock {
+                    if (_state.value !is AuthenticationState.Authenticated) return@withLock
+
+                    when (val result = repository.getCurrentAuthenticatedAdmin()) {
+                        is OperationResult.Success -> {
+                            _state.value = AuthenticationState.Authenticated(result.value)
+                        }
+                        is OperationResult.Failure -> {
+                            _state.value = stateForFailure(result.error)
+                        }
                     }
                 }
+            } finally {
+                validationInFlight = false
             }
         }
     }
 
     fun logout() {
+        if (logoutInFlight) return
+        logoutInFlight = true
+
         viewModelScope.launch {
-            operationMutex.withLock {
-                repository.logout()
-                _state.value = AuthenticationState.Unauthenticated
+            try {
+                operationMutex.withLock {
+                    repository.logout()
+                    _state.value = AuthenticationState.Unauthenticated
+                }
+            } finally {
+                logoutInFlight = false
             }
         }
     }

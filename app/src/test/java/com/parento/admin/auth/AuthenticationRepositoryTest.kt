@@ -141,6 +141,7 @@ private class FakeApi(
         OperationResult.Success(
             AuthenticatedAdmin("admin-1", "admin@example.com", "ACTIVE", null),
         ),
+    private var currentCalls = 0
     private val logoutResult: OperationResult<Unit> = OperationResult.Success(Unit),
 ) : AuthenticationApi {
     override suspend fun login(
@@ -153,8 +154,10 @@ private class FakeApi(
 
     override suspend fun current(
         session: AuthenticationSession,
-    ): OperationResult<AuthenticatedAdmin> =
-        if (refreshResult is OperationResult.Success) currentAfterRefresh else currentResult
+    ): OperationResult<AuthenticatedAdmin> {
+        currentCalls += 1
+        return if (currentCalls > 1) currentAfterRefresh else currentResult
+    }
 
     override suspend fun logout(
         session: AuthenticationSession,

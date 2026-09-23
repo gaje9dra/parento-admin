@@ -428,3 +428,146 @@ No other Parento repository was modified.
 `gaje9dra/parento-managed` will later need authorized managed-device contracts for enrollment, status, policy application, and other explicitly permitted management operations.
 
 Those are documentation-level future requirements only for Phase 1.4.
+
+## Phase 1.5 — Security Baseline, Testing Infrastructure & Phase 1 Completion
+
+Phase 1.5 hardens the existing Admin Android foundation without implementing authentication or device-management functionality.
+
+### Project purpose
+
+Parento Admin is the authorized administrator/controller Android application for the Parento platform.
+
+### Security review
+
+- Only the launcher Activity is exported.
+- No camera, microphone, location, accessibility, VPN, notification-listener, Device Owner, device-admin, or unnecessary storage permissions are declared.
+- Global cleartext traffic remains disabled.
+- Application backup remains disabled.
+- Production configuration requires HTTPS.
+- Backend URLs reject embedded credentials and unexpected path/query/fragment data.
+- Production diagnostics are disabled.
+- Future management feature flags remain disabled.
+- No production credentials or security material are committed.
+
+### Lifecycle
+
+`ParentoAdminApplication` initializes configuration once at application startup.
+
+`MainActivity` owns Activity/UI lifecycle and navigation. `AdminHomeViewModel` owns UI state and has no Activity, View, or Context reference.
+
+`SavedStateHandle` restores lightweight UI state after Activity/process recreation. Device records are not persisted in Phase 1, so restored content safely returns to the neutral Empty state.
+
+### UI and navigation
+
+The existing Android Views + Material Components architecture is preserved.
+
+Current UI states: Loading, Empty, Content, Error.
+
+Current root destinations: Home, Devices (placeholder), Policies (placeholder), Settings (placeholder).
+
+No fake device data, fake backend responses, or future management controls are displayed.
+
+The UI uses system-bar insets, resource-backed dimensions, accessible loading semantics, and 48dp minimum interactive targets.
+
+### Configuration
+
+Build configuration is centralized through `AppConfig`.
+
+Build environments:
+
+| Build type | Environment | Diagnostics |
+|---|---|---|
+| debug | development | enabled |
+| testing | test | disabled |
+| release | production | disabled |
+
+Android reserves the BuildType name `test`, so the test environment uses the `testing` build type while retaining the `TEST` application environment.
+
+No real production backend URL is invented. Example endpoints remain placeholders.
+
+### Testing
+
+JUnit 4 is retained.
+
+Phase 1.5 tests cover valid/invalid configuration, HTTPS enforcement, backend URL credential/path/query/fragment rejection, environment separation, disabled future feature flags, production diagnostic restrictions, ViewModel state transitions, SavedStateHandle restoration, navigation destination stability, and domain architecture contracts.
+
+Tests use deterministic local values and do not require credentials, external services, or personal device state.
+
+### CI
+
+A minimal GitHub Actions workflow is provided at `.github/workflows/verify.yml`.
+
+It provisions JDK 17 and Gradle 8.13 and runs:
+
+1. unit tests
+2. Android lint
+3. debug build
+4. release build
+
+The workflow does not publish or deploy APKs.
+
+The repository does not currently contain a Gradle wrapper, so CI provisions Gradle 8.13 explicitly.
+
+### Development
+
+Use Android Studio with Android SDK Platform 36 and JDK 17.
+
+Expected commands when Gradle 8.13 is available:
+
+```bash
+gradle test
+gradle lint
+gradle assembleDebug
+gradle assembleRelease
+```
+
+The test environment build type is:
+
+```bash
+gradle assembleTesting
+```
+
+No secrets are required for the current phase.
+
+### Documentation
+
+Added:
+- `docs/phase-1-architecture.md`
+- `docs/cross-repository-contracts.md`
+
+These documents distinguish implemented foundation work from planned and intentionally deferred functionality.
+
+### Cross-repository requirements
+
+No other Parento repository was modified.
+
+`gaje9dra/parento-backend` will later need authenticated/authorized administrator contracts, managed-device contracts, policy operations, events, and realtime communication.
+
+`gaje9dra/parento-managed` will later need authorized managed-device contracts for enrollment, status, policy application, and permitted management operations.
+
+Those are documentation-only requirements for this phase.
+
+### Phase 1.5 boundary
+
+Still intentionally not implemented:
+- admin authentication
+- Google OAuth
+- password/JWT/refresh-token flows
+- backend API integration
+- enrollment or QR pairing
+- device commands
+- WebSockets or FCM
+- location
+- camera/microphone/audio
+- screen capture/sharing
+- application blocking
+- website/DNS/VPN filtering
+- Device Owner/Android Enterprise provisioning
+- device locking
+- remote wipe
+- policy enforcement
+- covert monitoring
+- surveillance
+- security bypasses
+
+Only `gaje9dra/parento-admin` is modified by Phase 1.5.

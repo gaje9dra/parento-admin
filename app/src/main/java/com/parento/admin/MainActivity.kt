@@ -1,29 +1,43 @@
 package com.parento.admin
 
 import android.os.Bundle
+import android.view.MenuItem
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import androidx.activity.OnBackPressedCallback
-import androidx.lifecycle.ViewModelProvider
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.textview.MaterialTextView
+import com.parento.admin.auth.AuthenticationState
 import com.parento.admin.navigation.AdminDestination
 import com.parento.admin.navigation.AdminNavigator
 import com.parento.admin.ui.AdminHomeScreen
 import com.parento.admin.ui.AdminHomeViewModel
+import com.parento.admin.ui.AdminLoginScreen
 import com.parento.admin.ui.AdminUiState
+import com.parento.admin.ui.AuthenticationViewModel
+import com.parento.admin.ui.AuthenticationViewModelFactory
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
-    private val viewModel: AdminHomeViewModel by lazy {
+    private val authViewModel: AuthenticationViewModel by lazy {
+        ViewModelProvider(
+            this,
+            AuthenticationViewModelFactory(
+                (application as ParentoAdminApplication)
+                    .appContainer.authenticationRepository,
+            ),
+        )[AuthenticationViewModel::class.java]
+    }
+
+    private val homeViewModel: AdminHomeViewModel by lazy {
         ViewModelProvider(this)[AdminHomeViewModel::class.java]
     }
+
     private val navigator = AdminNavigator()
 
     private lateinit var contentRoot: FrameLayout
@@ -52,64 +66,101 @@ class MainActivity : AppCompatActivity() {
             ),
         )
         root.addView(column)
-
-        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
-            insets
-        }
-
         setContentView(root)
 
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                if (navigator.currentDestination != AdminDestination.HOME) {
-                    navigator.navigate(AdminDestination.HOME)
-                    renderDestination()
-                } else {
-                    isEnabled = false
-                    onBackPressedDispatcher.onBackPressed()
-                }
-            }
-        })
+        authViewModel.restoreSession()
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.uiState.collect { state ->
-                    if (navigator.currentDestination == AdminDestination.HOME) {
-                        renderDestination(state)
-                    }
+                authViewModel.state.collect { state ->
+                    renderAuthenticationState(state)
                 }
             }
         }
 
-        renderDestination()
+        onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    if (authViewModel.state.value is AuthenticationState.Authenticated &&
+                        navigator.currentDestination != AdminDestination.HOME
+                    ) {
+                        navigator.navigate(AdminDestination.HOME)
+                        renderAuthenticatedState()
+                    } else {
+                        isEnabled = false
+                        onBackPressedDispatcher.onBackPressed()
+                    }
+                }
+            },
+        )
     }
 
-    private fun renderDestination(state: AdminUiState = viewModel.uiState.value) {
-        contentRoot.removeAllViews()
+    private fun renderAuthenticationState(state: AuthenticationState) {
+        toolbar.menu.clear()
 
-        when (navigator.currentDestination) {
-            AdminDestination.HOME -> {
-                toolbar.title = getString(R.string.dashboard_title)
+        when (state) {
+            AuthenticationState.Unauthenticated,
+            AuthenticationState.Authenticating,
+            is AuthenticationState.AuthenticationError -> {
+                toolbar.title = getString(R.string.login_title)
+                contentRoot.removeAllViews()
                 contentRoot.addView(FrameLayout(this).also { frame ->
-                    AdminHomeScreen(frame, viewModel) { target ->
-                        navigator.navigate(target)
-                        renderDestination()
-                    }.render(state)
+                    AdminLoginScreen(frameAsColumn(frame), authViewModel).render(state)
                 })
             }
 
+            is AuthenticationState.Authenticated -> {
+                renderAuthenticatedState()
+            }
+        }
+    }
+
+    private fun frameAsColumn(frame: FrameLayout): LinearLayout {
+        val column = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        frame.addView(
+            column,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+            ),
+        )
+        return column
+    }
+
+    private fun renderAuthenticatedState() {
+        toolbar.menu.clear()
+        toolbar.title = getString(R.string.dashboard_title)
+        toolbar.menu.add(R.string.logout)
+            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
+            .setOnMenuItemClickListener {
+                authViewModel.logout()
+                true
+            }
+
+        contentRoot.removeAllViews()
+        contentRoot.addView(FrameLayout(this).also { frame ->
+            AdminHomeScreen(frame, homeViewModel) { target ->
+                navigator.navigate(target)
+                renderAuthenticatedDestination()
+            }.render(homeViewModel.uiState.value)
+        })
+    }
+
+    private fun renderAuthenticatedDestination() {
+        contentRoot.removeAllViews()
+        when (navigator.currentDestination) {
+            AdminDestination.HOME -> renderAuthenticatedState()
             AdminDestination.DEVICES -> renderPlaceholder(
                 R.string.nav_devices,
                 R.string.devices_placeholder,
             )
-
             AdminDestination.POLICIES -> renderPlaceholder(
                 R.string.nav_policies,
                 R.string.policies_placeholder,
             )
-
             AdminDestination.SETTINGS -> renderPlaceholder(
                 R.string.nav_settings,
                 R.string.settings_placeholder,
@@ -123,12 +174,8 @@ class MainActivity : AppCompatActivity() {
             MaterialTextView(this).apply {
                 text = getString(messageRes)
                 textSize = 18f
-                setPadding(
-                    resources.getDimensionPixelSize(R.dimen.screen_padding),
-                    resources.getDimensionPixelSize(R.dimen.screen_padding),
-                    resources.getDimensionPixelSize(R.dimen.screen_padding),
-                    resources.getDimensionPixelSize(R.dimen.screen_padding),
-                )
+                val padding = resources.getDimensionPixelSize(R.dimen.screen_padding)
+                setPadding(padding, padding, padding, padding)
             },
         )
     }

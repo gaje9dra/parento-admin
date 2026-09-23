@@ -184,3 +184,162 @@ Future managed-device work must expose the device-side contracts required for au
 Implemented: internal architecture contracts, domain foundation, error/result model, logging boundary, local-data boundary, backend boundary, device-management boundary, policy-management boundary, security boundary, and future navigation contract.
 
 Not implemented: all future management functionality listed above.
+
+## Phase 1.3 — Configuration, Environment & Operational Foundation
+
+Phase 1.3 adds the configuration and operational foundation while preserving the Phase 1.2 architecture contracts. No authentication, enrollment, device control, policy enforcement, realtime communication, or other future management functionality is implemented.
+
+### Configuration architecture
+
+Application configuration is centralized through:
+
+Build configuration
+       |
+AdminApplicationConfig
+       |
+AppConfig
+  |-- environment
+  |-- backendBaseUrl
+  |-- logging
+  |-- security
+  `-- featureFlags
+
+Application code should consume AppConfig rather than reading build-specific values directly.
+
+### Build environments
+
+| Build type | Environment | Backend endpoint | Logging | Diagnostics |
+|---|---|---|---|---|
+| debug | development | https://dev-backend.example.invalid | DEBUG | enabled |
+| test | test | https://test-backend.example.invalid | INFO | disabled |
+| release | production | https://backend.example.invalid | WARNING | disabled |
+
+The .example.invalid endpoints are placeholders only. No production infrastructure domain or credentials are invented in this phase. The release configuration requires HTTPS.
+
+### Feature flags
+
+Future feature flags exist only as a lightweight configuration foundation and are disabled by default:
+- authentication
+- enrollment
+- device communication
+- location
+- screen sharing
+- audio
+- application management
+- website filtering
+- device restrictions
+
+These flags do not implement or activate those features.
+
+### Logging
+
+AdminLogger remains the logging boundary. AndroidAdminLogger applies the configured minimum level and enabled state centrally.
+
+Never log:
+- passwords
+- authentication or refresh tokens
+- private keys
+- authorization headers
+- enrollment or pairing secrets
+- sensitive device information
+- unnecessary location data
+- screen contents
+- microphone/audio contents
+
+Release logging is limited to WARNING and ERROR.
+
+### Startup
+
+ParentoAdminApplication initializes typed configuration before the existing Admin UI is created. Startup does not authenticate, enroll devices, initialize device-control services, or contact the backend.
+
+### Security baseline
+
+The Admin manifest now:
+- explicitly initializes ParentoAdminApplication
+- keeps only the existing launcher Activity exported
+- disables application backup
+- disables global cleartext traffic
+- adds no sensitive runtime permissions
+
+No camera, microphone, location, screen-capture, accessibility, VPN, Device Owner, or unnecessary storage permissions were introduced.
+
+### Configuration validation
+
+The configuration layer rejects:
+- blank backend URLs
+- malformed backend URLs
+- URLs without HTTP(S)
+- backend URLs containing embedded credentials
+- production HTTP endpoints when HTTPS is required
+- unsupported environment values
+- unsupported log levels
+
+Configuration errors use generic messages and do not expose submitted credentials or other sensitive configuration values.
+
+### Testing
+
+Phase 1.3 adds unit tests for:
+- valid configuration loading
+- development/test/production separation
+- invalid backend URL rejection
+- embedded backend credentials rejection
+- production HTTPS enforcement
+- production diagnostic restrictions
+- future feature flags remaining disabled
+
+The existing JUnit 4 dependency is reused; no new testing framework was added.
+
+### Versioning
+
+The existing application version remains unchanged:
+- version name: 0.1.0
+- version code: 1
+
+Production signing credentials are not included in source control. Real release signing must be supplied through the deployment environment.
+
+### Development commands
+
+    ./gradlew assembleDebug
+    ./gradlew assembleTest
+    ./gradlew test
+    ./gradlew lint
+    ./gradlew assembleRelease
+
+On Windows, use gradlew.bat.
+
+No secrets are required for the current phase.
+
+### Cross-repository requirements
+
+No other Parento repository was modified.
+
+gaje9dra/parento-backend will later need to expose authenticated administrator API/realtime contracts and the finalized backend endpoint.
+
+gaje9dra/parento-managed will later need to expose the managed-device contracts consumed by authorized Admin operations.
+
+Those are documentation-level future requirements only for this phase.
+
+### Phase 1.3 limitations
+
+Still intentionally not implemented:
+- admin registration/login
+- Google OAuth
+- password/JWT authentication
+- refresh tokens
+- managed-device enrollment or QR pairing
+- device commands
+- realtime communication
+- push notifications
+- location
+- camera/microphone/audio
+- screen sharing / MediaProjection
+- application or website blocking
+- DNS/VPN filtering
+- device locking or remote wipe
+- Android Enterprise / Device Owner provisioning
+- policy enforcement
+- audit system
+- payments
+- hidden monitoring
+- covert surveillance
+- Android security bypasses

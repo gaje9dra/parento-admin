@@ -35,8 +35,10 @@ class AuthenticationApiClient(
         ) { json ->
             val data = json.getJSONObject("data")
             session.copy(
-                accessToken = data.getString("accessToken"),
-                refreshToken = data.getString("refreshToken"),
+                accessToken = data.getString("accessToken").takeIf { it.length in 20..256 }
+                    ?: throw IllegalArgumentException("Invalid access token"),
+                refreshToken = data.getString("refreshToken").takeIf { it.length in 20..256 }
+                    ?: throw IllegalArgumentException("Invalid refresh token"),
                 accessTokenExpiresAtEpochMillis =
                     parseTimestamp(data.getString("accessTokenExpiresAt")),
                 sessionExpiresAtEpochMillis =
@@ -116,8 +118,10 @@ class AuthenticationApiClient(
         val data = json.getJSONObject("data")
         return AuthenticationSession(
             admin = parseAdmin(data.getJSONObject("admin")),
-            accessToken = data.getString("accessToken"),
-            refreshToken = data.getString("refreshToken"),
+            accessToken = data.getString("accessToken").takeIf { it.length in 20..256 }
+                ?: throw IllegalArgumentException("Invalid access token"),
+            refreshToken = data.getString("refreshToken").takeIf { it.length in 20..256 }
+                ?: throw IllegalArgumentException("Invalid refresh token"),
             accessTokenExpiresAtEpochMillis =
                 parseTimestamp(data.getString("accessTokenExpiresAt")),
             sessionExpiresAtEpochMillis =
@@ -142,8 +146,12 @@ class AuthenticationApiClient(
         }.getOrNull()
         return when {
             status == 401 && code == "INVALID_CREDENTIALS" -> AdminError.InvalidCredentials
+            status == 401 && code == "SESSION_REVOKED" -> AdminError.SessionRevoked
             status == 401 -> AdminError.SessionExpired
+            status == 403 && code == "ACCOUNT_DISABLED" -> AdminError.AccountDisabled
+            status == 403 -> AdminError.Authorization
             status == 400 -> AdminError.Validation
+            status == 429 -> AdminError.ServerUnavailable
             status >= 500 -> AdminError.ServerUnavailable
             else -> AdminError.UnknownAuthentication
         }

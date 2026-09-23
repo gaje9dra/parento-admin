@@ -39,6 +39,29 @@ class AuthenticationViewModelInstrumentedTest {
     }
 
     @Test
+    fun duplicateLoginSubmissionsAreNotRetriedAfterTheFirstFailure() = runBlocking {
+        val repository = FakeRepository(
+            loginDelayMillis = 150,
+            loginResult = OperationResult.Failure(AdminError.Network),
+        )
+        val viewModel = AuthenticationViewModel(repository)
+
+        viewModel.login("admin@example.com", "correct password")
+        viewModel.login("admin@example.com", "correct password")
+
+        delay(350)
+
+        assertEquals(1, repository.loginCalls)
+        assertEquals(
+            AuthenticationState.AuthenticationError(
+                "Unable to reach the Parento server.",
+            ),
+            viewModel.state.value,
+        )
+        viewModel.clear()
+    }
+
+    @Test
     fun logoutTransitionsToUnauthenticatedWhenBackendLogoutFails() = runBlocking {
         val repository = FakeRepository(
             logoutResult = OperationResult.Failure(AdminError.Network),
@@ -80,6 +103,8 @@ class AuthenticationViewModelInstrumentedTest {
     private class FakeRepository(
         private val loginDelayMillis: Long = 0,
         private val logoutResult: OperationResult<Unit> = OperationResult.Success(Unit),
+        private val loginResult: OperationResult<AuthenticatedAdmin> =
+            OperationResult.Success(admin),
         private val restoreResult: OperationResult<AuthenticatedAdmin?> =
             OperationResult.Success(null),
     ) : AuthenticationRepository {
@@ -91,7 +116,7 @@ class AuthenticationViewModelInstrumentedTest {
         ): OperationResult<AuthenticatedAdmin> {
             loginCalls += 1
             delay(loginDelayMillis)
-            return OperationResult.Success(admin)
+            return loginResult
         }
 
         override suspend fun logout(): OperationResult<Unit> {

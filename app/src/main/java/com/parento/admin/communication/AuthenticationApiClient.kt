@@ -70,8 +70,9 @@ class AuthenticationApiClient(
         bearerToken: String? = null,
         parse: (JSONObject) -> T,
     ): OperationResult<T> {
+        var connection: HttpURLConnection? = null
         return try {
-            val connection = (URL(config.backendBaseUrl.trimEnd('/') + path).openConnection()
+            connection = (URL(config.backendBaseUrl.trimEnd('/') + path).openConnection()
                 as HttpURLConnection)
             connection.requestMethod = method
             connection.connectTimeout = TIMEOUT_MS
@@ -112,7 +113,7 @@ class AuthenticationApiClient(
         } catch (_: Exception) {
             OperationResult.Failure(AdminError.UnknownAuthentication)
         } finally {
-            // HttpURLConnection resources are closed by stream use; disconnect releases the connection itself.
+            connection?.disconnect()
         }
     }
 

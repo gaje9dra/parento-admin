@@ -118,6 +118,57 @@ class AuthenticationRepositoryTest {
     }
 
     @Test
+    fun restoreClearsRevokedSession() = runBlocking {
+        val store = FakeStore().apply { session = session() }
+        val repository = AuthenticationRepositoryImpl(
+            FakeApi(currentResult = OperationResult.Failure(AdminError.SessionRevoked)),
+            store,
+        )
+
+        val result = repository.restoreSession()
+
+        assertEquals(
+            OperationResult.Failure<AuthenticatedAdmin>(AdminError.SessionRevoked),
+            result,
+        )
+        assertNull(store.session)
+    }
+
+    @Test
+    fun restoreClearsDisabledAccountSession() = runBlocking {
+        val store = FakeStore().apply { session = session() }
+        val repository = AuthenticationRepositoryImpl(
+            FakeApi(currentResult = OperationResult.Failure(AdminError.AccountDisabled)),
+            store,
+        )
+
+        val result = repository.restoreSession()
+
+        assertEquals(
+            OperationResult.Failure<AuthenticatedAdmin>(AdminError.AccountDisabled),
+            result,
+        )
+        assertNull(store.session)
+    }
+
+    @Test
+    fun restoreClearsAuthorizationRejectedSession() = runBlocking {
+        val store = FakeStore().apply { session = session() }
+        val repository = AuthenticationRepositoryImpl(
+            FakeApi(currentResult = OperationResult.Failure(AdminError.Authorization)),
+            store,
+        )
+
+        val result = repository.restoreSession()
+
+        assertEquals(
+            OperationResult.Failure<AuthenticatedAdmin>(AdminError.Authorization),
+            result,
+        )
+        assertNull(store.session)
+    }
+
+    @Test
     fun logoutClearsSessionEvenWhenBackendIsUnavailable() = runBlocking {
         val store = FakeStore().apply { session = session() }
         val repository = AuthenticationRepositoryImpl(

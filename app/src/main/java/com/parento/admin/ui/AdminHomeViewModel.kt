@@ -72,9 +72,17 @@ class AdminHomeViewModel(
         }
 
     private fun errorMessage(error: AdminError): String = when (error) {
-        AdminError.Authentication -> "Administrator authentication is unavailable in this phase."
+        AdminError.Authentication -> "Administrator authentication is unavailable."
         AdminError.Authorization -> "This action is not authorized."
         AdminError.Network -> "A network connection is unavailable."
+        AdminError.Timeout -> "The request timed out. Please try again."
+        AdminError.InvalidCredentials -> "Invalid email or password."
+        AdminError.AccountDisabled -> "This administrator account is disabled."
+        AdminError.SessionExpired -> "Your session has expired. Please sign in again."
+        AdminError.SessionRevoked -> "Your session is no longer valid. Please sign in again."
+        AdminError.Validation -> "The authentication request was invalid."
+        AdminError.ServerUnavailable -> "The Parento server is temporarily unavailable."
+        AdminError.UnknownAuthentication -> "Authentication could not be completed."
         is AdminError.DeviceNotFound -> "The requested device could not be found."
         AdminError.Policy -> "The policy operation could not be completed."
         AdminError.Backend -> "The management service is temporarily unavailable."

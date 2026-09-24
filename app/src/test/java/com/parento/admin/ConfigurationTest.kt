@@ -90,6 +90,28 @@ class ConfigurationTest {
     }
 
     @Test
+    fun productionCannotDisableHttps() {
+        assertThrows(IllegalArgumentException::class.java) {
+            config(
+                environment = AppEnvironment.PRODUCTION,
+                requireHttps = false,
+                debugDiagnostics = false,
+            )
+        }
+    }
+
+    @Test
+    fun productionCannotEnableDebugDiagnostics() {
+        assertThrows(IllegalArgumentException::class.java) {
+            config(
+                environment = AppEnvironment.PRODUCTION,
+                requireHttps = true,
+                debugDiagnostics = true,
+            )
+        }
+    }
+
+    @Test
     fun futureFeatureFlagsDefaultToDisabled() {
         val flags = config().featureFlags
         assertFalse(flags.authentication)

@@ -6,11 +6,13 @@ import android.widget.LinearLayout
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textview.MaterialTextView
 import com.parento.admin.R
+import com.parento.admin.auth.AuthenticatedAdmin
 import com.parento.admin.navigation.AdminDestination
 
 class AdminHomeScreen(
     private val root: FrameLayout,
     private val viewModel: AdminHomeViewModel,
+    private val admin: AuthenticatedAdmin,
     private val onNavigate: (AdminDestination) -> Unit,
 ) {
     fun render(state: AdminUiState) {
@@ -36,6 +38,8 @@ class AdminHomeScreen(
             setPadding(0, resources.getDimensionPixelSize(R.dimen.item_spacing), 0, resources.getDimensionPixelSize(R.dimen.section_spacing))
         })
 
+        renderAdminProfile(content, admin)
+
         when (state) {
             AdminUiState.Loading -> content.addView(AdminStateViews.loading(root.context))
             AdminUiState.Empty -> content.addView(AdminStateViews.empty(root.context))
@@ -55,6 +59,31 @@ class AdminHomeScreen(
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.WRAP_CONTENT,
         ))
+    }
+
+    private fun renderAdminProfile(container: LinearLayout, admin: AuthenticatedAdmin) {
+        val profile = LinearLayout(root.context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(
+                resources.getDimensionPixelSize(R.dimen.card_padding),
+                resources.getDimensionPixelSize(R.dimen.card_padding),
+                resources.getDimensionPixelSize(R.dimen.card_padding),
+                resources.getDimensionPixelSize(R.dimen.card_padding),
+            )
+        }
+        profile.addView(MaterialTextView(root.context).apply {
+            text = root.context.getString(R.string.admin_profile_title)
+            textSize = 20f
+        })
+        profile.addView(MaterialTextView(root.context).apply {
+            text = root.context.getString(R.string.admin_profile_email, admin.email)
+            textSize = 16f
+        })
+        profile.addView(MaterialTextView(root.context).apply {
+            text = root.context.getString(R.string.admin_profile_status, admin.status)
+            textSize = 16f
+        })
+        container.addView(profile)
     }
 
     private fun renderContent(container: LinearLayout, state: AdminUiState.Content) {

@@ -64,6 +64,35 @@ class AuthenticationRepositoryTest {
     }
 
     @Test
+    fun currentAdminRefreshesStoredServerAuthoritativeIdentity() = runBlocking {
+        val store = FakeStore().apply { session = session() }
+        val updatedAdmin = admin.copy(email = "updated@example.com")
+        val repository = AuthenticationRepositoryImpl(
+            FakeApi(currentResult = OperationResult.Success(updatedAdmin)),
+            store,
+        )
+
+        val result = repository.getCurrentAuthenticatedAdmin()
+
+        assertEquals(OperationResult.Success(updatedAdmin), result)
+        assertEquals(updatedAdmin, store.session?.admin)
+    }
+
+    @Test
+    fun currentAdminNetworkFailureDoesNotInventAuthenticatedIdentity() = runBlocking {
+        val store = FakeStore().apply { session = session() }
+        val repository = AuthenticationRepositoryImpl(
+            FakeApi(currentResult = OperationResult.Failure(AdminError.Network)),
+            store,
+        )
+
+        val result = repository.getCurrentAuthenticatedAdmin()
+
+        assertEquals(OperationResult.Failure(AdminError.Network), result)
+        assertEquals(admin, store.session?.admin)
+    }
+
+    @Test
     fun expiredStoredSessionIsCleared() = runBlocking {
         val store = FakeStore().apply {
             session = session(

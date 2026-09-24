@@ -65,6 +65,15 @@ data class AppConfig(
                 "Production backend base URL must use HTTPS."
             }
         }
+
+        if (environment == AppEnvironment.PRODUCTION) {
+            require(security.requireHttps) {
+                "Production configuration must require HTTPS."
+            }
+            require(!security.allowDebugDiagnostics) {
+                "Production configuration must not allow debug diagnostics."
+            }
+        }
     }
 
     val isDevelopment: Boolean

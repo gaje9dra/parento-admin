@@ -158,7 +158,7 @@ class MainActivity : AppCompatActivity() {
 
         contentRoot.removeAllViews()
         contentRoot.addView(FrameLayout(this).also { frame ->
-            AdminHomeScreen(frame, homeViewModel) { target ->
+            AdminHomeScreen(frame, homeViewModel, (state as AuthenticationState.Authenticated).admin) { target ->
                 navigator.navigate(target)
                 renderAuthenticatedDestination()
             }.render(homeViewModel.uiState.value)

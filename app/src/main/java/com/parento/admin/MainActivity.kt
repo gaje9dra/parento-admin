@@ -146,6 +146,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderAuthenticatedState() {
+        val admin = (authViewModel.state.value as? AuthenticationState.Authenticated)?.admin
+            ?: return
         toolbar.menu.clear()
         toolbar.title = getString(R.string.dashboard_title)
         toolbar.menu.add(R.string.logout).apply {
@@ -158,7 +160,7 @@ class MainActivity : AppCompatActivity() {
 
         contentRoot.removeAllViews()
         contentRoot.addView(FrameLayout(this).also { frame ->
-            AdminHomeScreen(frame, homeViewModel, (state as AuthenticationState.Authenticated).admin) { target ->
+            AdminHomeScreen(frame, homeViewModel, admin) { target ->
                 navigator.navigate(target)
                 renderAuthenticatedDestination()
             }.render(homeViewModel.uiState.value)

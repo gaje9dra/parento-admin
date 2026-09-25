@@ -227,7 +227,8 @@ class AdminBackendApiClient(
 
     private fun connectionState(value: String) = when (value) {
         "CONNECTED" -> ConnectionState.CONNECTED
-        "STALE", "EXPIRED", "DISCONNECTED" -> ConnectionState.DISCONNECTED
+        "STALE" -> ConnectionState.RECONNECTING
+        "EXPIRED", "DISCONNECTED" -> ConnectionState.DISCONNECTED
         else -> ConnectionState.ERROR
     }
 

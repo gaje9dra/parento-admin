@@ -21,6 +21,9 @@ import com.parento.admin.ui.AdminLoginScreen
 import com.parento.admin.ui.AdminUiState
 import com.parento.admin.ui.AuthenticationViewModel
 import com.parento.admin.ui.AuthenticationViewModelFactory
+import com.parento.admin.ui.DeviceMonitoringScreen
+import com.parento.admin.ui.DeviceMonitoringUiState
+import com.parento.admin.ui.DeviceMonitoringViewModel
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
@@ -41,6 +44,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val navigator = AdminNavigator()
+
+    private val deviceMonitoringViewModel: DeviceMonitoringViewModel by lazy {
+        ViewModelProvider(this)[DeviceMonitoringViewModel::class.java].also { viewModel ->
+            if (viewModel.state.value is DeviceMonitoringUiState.Loading) {
+                // Repository wiring is owned by the application container; this ViewModel
+                // is created through the explicit factory below in onCreate.
+            }
+        }
+    }
 
     private lateinit var contentRoot: FrameLayout
     private lateinit var toolbar: MaterialToolbar
@@ -171,10 +183,8 @@ class MainActivity : AppCompatActivity() {
         contentRoot.removeAllViews()
         when (navigator.currentDestination) {
             AdminDestination.HOME -> renderAuthenticatedState()
-            AdminDestination.DEVICES -> renderPlaceholder(
-                R.string.nav_devices,
-                R.string.devices_placeholder,
-            )
+            AdminDestination.DEVICES -> renderDeviceMonitoring()
+            AdminDestination.DEVICE_DETAIL -> renderDeviceDetail()
             AdminDestination.POLICIES -> renderPlaceholder(
                 R.string.nav_policies,
                 R.string.policies_placeholder,
@@ -184,6 +194,62 @@ class MainActivity : AppCompatActivity() {
                 R.string.settings_placeholder,
             )
         }
+    }
+
+    private fun renderDeviceMonitoring() {
+        toolbar.title = getString(R.string.nav_devices)
+        contentRoot.addView(FrameLayout(this).also { frame ->
+            DeviceMonitoringScreen(
+                root = frame,
+                viewModel = deviceMonitoringViewModel,
+                onBack = {
+                    navigator.navigate(AdminDestination.HOME)
+                    renderAuthenticatedState()
+                },
+                onDeviceSelected = { deviceId ->
+                    navigator.navigateToDevice(deviceId)
+                    renderAuthenticatedDestination()
+                },
+            ).render(deviceMonitoringViewModel.state.value)
+        })
+    }
+
+    private fun renderDeviceDetail() {
+        val deviceId = navigator.selectedDeviceId ?: run {
+            navigator.backToDevices()
+            renderAuthenticatedDestination()
+            return
+        }
+        val state = deviceMonitoringViewModel.state.value
+        val monitoring = when (state) {
+            is DeviceMonitoringUiState.Content -> state.devices.firstOrNull { it.device.deviceId == deviceId }
+            is DeviceMonitoringUiState.Stale -> state.devices.firstOrNull { it.device.deviceId == deviceId }
+            else -> null
+        }
+        toolbar.title = getString(R.string.nav_devices)
+        contentRoot.addView(FrameLayout(this).also { frame ->
+            if (monitoring != null) {
+                DeviceMonitoringScreen(
+                    root = frame,
+                    viewModel = deviceMonitoringViewModel,
+                    onBack = {
+                        navigator.backToDevices()
+                        renderAuthenticatedDestination()
+                    },
+                    onDeviceSelected = {},
+                ).renderDetail(monitoring)
+            } else {
+                DeviceMonitoringScreen(
+                    root = frame,
+                    viewModel = deviceMonitoringViewModel,
+                    onBack = {
+                        navigator.backToDevices()
+                        renderAuthenticatedDestination()
+                    },
+                    onDeviceSelected = {},
+                ).render(DeviceMonitoringUiState.Error("The selected device is no longer available."))
+            }
+        })
     }
 
     private fun renderPlaceholder(titleRes: Int, messageRes: Int) {

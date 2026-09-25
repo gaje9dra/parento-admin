@@ -5,4 +5,5 @@ enum class AdminDestination {
     DEVICES,
     POLICIES,
     SETTINGS,
+    LOCATION,
 }

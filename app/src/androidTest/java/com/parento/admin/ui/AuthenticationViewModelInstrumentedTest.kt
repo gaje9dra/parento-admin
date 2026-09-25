@@ -58,7 +58,6 @@ class AuthenticationViewModelInstrumentedTest {
             ),
             viewModel.state.value,
         )
-        viewModel.clear()
     }
 
     @Test
@@ -104,7 +103,14 @@ class AuthenticationViewModelInstrumentedTest {
         private val loginDelayMillis: Long = 0,
         private val logoutResult: OperationResult<Unit> = OperationResult.Success(Unit),
         private val loginResult: OperationResult<AuthenticatedAdmin> =
-            OperationResult.Success(admin),
+            OperationResult.Success(
+                AuthenticatedAdmin(
+                    id = "admin-1",
+                    email = "admin@example.com",
+                    status = "ACTIVE",
+                    lastAuthenticatedAt = null,
+                ),
+            ),
         private val restoreResult: OperationResult<AuthenticatedAdmin?> =
             OperationResult.Success(null),
     ) : AuthenticationRepository {

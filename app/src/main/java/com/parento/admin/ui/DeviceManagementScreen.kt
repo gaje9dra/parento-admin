@@ -8,9 +8,6 @@ import android.widget.ScrollView
 import android.widget.TextView
 import com.parento.admin.device.CommandStatus
 import com.parento.admin.device.ManagedDeviceStatus
-import com.parento.admin.device.ManagementMode
-import com.parento.admin.device.MonitoringFreshness
-import com.parento.admin.domain.ConnectionState
 
 class DeviceManagementScreen(
     private val root: ViewGroup,

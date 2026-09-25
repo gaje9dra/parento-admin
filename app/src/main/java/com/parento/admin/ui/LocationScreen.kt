@@ -42,8 +42,14 @@ class LocationScreen(
             text = root.context.getString(R.string.location_title)
             textSize = 24f
         })
+        content.addView(MaterialButton(root.context).apply {
+            text = root.context.getString(R.string.location_back)
+            contentDescription = text
+            minHeight = resources.getDimensionPixelSize(R.dimen.minimum_touch_target)
+            setOnClickListener { onBack() }
+        })
         content.addView(MaterialTextView(root.context).apply {
-            text = root.context.getString(R.string.location_device, viewModel.deviceIdForUi())
+            text = root.context.getString(R.string.location_device, viewModel.deviceId)
             textSize = 14f
         })
         content.addView(MaterialButton(root.context).apply {

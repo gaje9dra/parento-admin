@@ -202,7 +202,7 @@ class MainActivity : AppCompatActivity() {
             AdminDestination.DEVICES -> {
                 toolbar.title = getString(R.string.nav_devices)
                 renderDeviceList()
-                deviceViewModel.loadDevices()
+                deviceViewModel.loadDevices(refresh = true)
             }
             AdminDestination.POLICIES -> renderPlaceholder(
                 R.string.nav_policies,

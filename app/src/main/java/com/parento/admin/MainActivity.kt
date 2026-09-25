@@ -225,7 +225,9 @@ class MainActivity : AppCompatActivity() {
                 },
             ).render(deviceMonitoringViewModel.state.value)
         })
-        deviceMonitoringViewModel.load()
+        if (deviceMonitoringViewModel.state.value is DeviceMonitoringUiState.Loading) {
+            deviceMonitoringViewModel.load()
+        }
     }
 
     private fun renderDeviceDetail() {

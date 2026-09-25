@@ -75,9 +75,9 @@ class DeviceManagementScreen(
         column.addView(text("Managed device ID: " + status.deviceId))
         column.addView(text("Enrollment: " + status.enrollmentState.name))
         column.addView(text("Device status: " + status.deviceStatus.name))
-        column.addView(text("Management mode: " + (status.monitoring?.managementMode?.let(::managementLabel) ?: "Unknown")))
-        column.addView(statusIndicator("Communication", connectionLabel(status.connectionState)))
-        column.addView(statusIndicator("Monitoring", freshnessLabel(status.monitoringFreshness)))
+        column.addView(text("Management mode: " + (status.monitoring?.managementMode?.let(::MonitoringStatusLabels.management) ?: "Unknown")))
+        column.addView(statusIndicator("Communication", MonitoringStatusLabels.connection(status.connectionState)))
+        column.addView(statusIndicator("Monitoring", MonitoringStatusLabels.freshness(status.monitoringFreshness)))
 
         column.addView(section("Connection"))
         column.addView(text("Last connected: " + MonitoringFormatters.timestamp(status.monitoring?.lastSuccessfulCommunicationAt)))
@@ -151,8 +151,8 @@ class DeviceManagementScreen(
             orientation = LinearLayout.VERTICAL
             setPadding(0, 8, 0, 8)
             addView(button(device.displayName, onClick))
-            addView(text("Communication: " + connectionLabel(device.connectionState)))
-            addView(text("Monitoring: " + freshnessLabel(device.monitoringFreshness)))
+            addView(text("Communication: " + MonitoringStatusLabels.connection(device.connectionState)))
+            addView(text("Monitoring: " + MonitoringStatusLabels.freshness(device.monitoringFreshness)))
             addView(text("Battery: " + (device.monitoring?.batteryPercentage?.let { "$it%" } ?: "Unavailable")))
             addView(text("Network: " + (device.monitoring?.networkState ?: "Unavailable")))
             addView(text("Last telemetry: " + MonitoringFormatters.relativeAge(device.monitoring?.lastMonitoringUpdateAt)))
@@ -201,30 +201,6 @@ class DeviceManagementScreen(
         )
     }
 
-    private fun connectionLabel(value: ConnectionState) = when (value) {
-        ConnectionState.CONNECTED -> "Connected"
-        ConnectionState.DISCONNECTED -> "Disconnected"
-        ConnectionState.CONNECTING -> "Connecting"
-        ConnectionState.RECONNECTING -> "Reconnecting"
-        ConnectionState.ERROR -> "Unavailable"
-    }
-
-    private fun freshnessLabel(value: MonitoringFreshness) = when (value) {
-        MonitoringFreshness.CURRENT -> "Fresh"
-        MonitoringFreshness.STALE -> "Stale"
-        MonitoringFreshness.VERY_STALE -> "Very stale"
-        MonitoringFreshness.NEVER_REPORTED -> "Never reported"
-        MonitoringFreshness.DISCONNECTED -> "Offline"
-        MonitoringFreshness.REVOKED -> "Revoked"
-        MonitoringFreshness.UNKNOWN -> "Unknown"
-    }
-
-    private fun managementLabel(value: ManagementMode) = when (value) {
-        ManagementMode.UNMANAGED -> "Unmanaged"
-        ManagementMode.PROFILE_OWNER -> "Profile Owner"
-        ManagementMode.DEVICE_OWNER -> "Device Owner"
-        ManagementMode.UNKNOWN -> "Unknown"
-    }
 
     private val terminalStatuses = setOf(
         CommandStatus.SUCCEEDED,

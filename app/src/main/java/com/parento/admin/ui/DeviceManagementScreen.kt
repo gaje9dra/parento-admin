@@ -3,7 +3,6 @@ package com.parento.admin.ui
 import android.graphics.Typeface
 import android.view.ViewGroup
 import android.widget.Button
-import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -12,8 +11,6 @@ import com.parento.admin.device.ManagedDeviceStatus
 import com.parento.admin.device.ManagementMode
 import com.parento.admin.device.MonitoringFreshness
 import com.parento.admin.domain.ConnectionState
-import com.parento.admin.domain.DeviceStatus
-import java.util.Locale
 
 class DeviceManagementScreen(
     private val root: ViewGroup,
@@ -23,11 +20,11 @@ class DeviceManagementScreen(
         root.removeAllViews()
         val column = column()
         column.addView(title("Managed devices"))
-        column.addView(text("Refreshes are explicit and lifecycle-scoped. The current backend exposes enrolled-device references rather than a canonical device-list endpoint."))
+        column.addView(text("Operational status and monitoring are shown from the backend's latest authoritative observation."))
 
         when (state) {
             DeviceListUiState.Loading -> column.addView(text("Loading managed devices…"))
-            DeviceListUiState.Empty -> column.addView(text("No completed enrollments with a managed-device ID are available."))
+            DeviceListUiState.Empty -> column.addView(text("No managed devices are available."))
             is DeviceListUiState.Error -> {
                 column.addView(text(state.message))
                 if (state.canRetry) column.addView(button("Retry") { viewModel.loadDevices(refresh = true) })
@@ -37,33 +34,28 @@ class DeviceManagementScreen(
                     column.addView(deviceCard(device) { onOpenDevice(device.deviceId) })
                 }
                 column.addView(button("Refresh") { viewModel.loadDevices(refresh = true) })
+                state.nextCursor?.let {
+                    column.addView(
+                        button(if (state.loadingMore) "Loading…" else "Load more") {
+                            viewModel.loadMoreDevices()
+                        }.apply { isEnabled = !state.loadingMore },
+                    )
+                }
             }
         }
-
-        val idInput = EditText(root.context).apply {
-            hint = "Managed device ID (UUID)"
-            setSingleLine(true)
-        }
-        column.addView(idInput)
-        column.addView(button("Open device") {
-            onOpenDevice(idInput.text.toString())
-        })
         root.addView(ScrollView(root.context).apply { addView(column) })
     }
 
-    fun renderDetail(
-        state: DeviceDetailUiState,
-        onBack: () -> Unit,
-    ) {
+    fun renderDetail(state: DeviceDetailUiState, onBack: () -> Unit) {
         root.removeAllViews()
         val column = column()
         column.addView(button("Back to devices", onClick = onBack))
-        column.addView(title("Device status"))
+        column.addView(title("Device information & monitoring"))
 
         when (state) {
             DeviceDetailUiState.Idle -> column.addView(text("Select a managed device."))
-            DeviceDetailUiState.Loading -> column.addView(text("Loading device status…"))
-            DeviceDetailUiState.Refreshing -> column.addView(text("Refreshing device status…"))
+            DeviceDetailUiState.Loading -> column.addView(text("Loading device information…"))
+            DeviceDetailUiState.Refreshing -> column.addView(text("Refreshing device information…"))
             is DeviceDetailUiState.Error -> {
                 column.addView(text(state.message))
                 if (state.canRetry) column.addView(button("Retry") { viewModel.refreshSelectedDevice() })
@@ -78,44 +70,63 @@ class DeviceManagementScreen(
     }
 
     private fun renderStatus(column: LinearLayout, status: ManagedDeviceStatus) {
-        column.addView(section("Identity"))
+        column.addView(section("Overview"))
         column.addView(text("Name: " + status.displayName))
         column.addView(text("Managed device ID: " + status.deviceId))
-
-        column.addView(section("Enrollment and management"))
         column.addView(text("Enrollment: " + status.enrollmentState.name))
         column.addView(text("Device status: " + status.deviceStatus.name))
-        column.addView(text("Connection: " + connectionLabel(status.connectionState)))
-        column.addView(text("Last seen: " + (status.lastSeenAt ?: "Unavailable")))
-        column.addView(text("Monitoring freshness: " + freshnessLabel(status.monitoringFreshness)))
+        column.addView(text("Management mode: " + (status.monitoring?.managementMode?.let(::managementLabel) ?: "Unknown")))
+        column.addView(statusIndicator("Communication", connectionLabel(status.connectionState)))
+        column.addView(statusIndicator("Monitoring", freshnessLabel(status.monitoringFreshness)))
 
+        column.addView(section("Connection"))
+        column.addView(text("Last connected: " + MonitoringFormatters.timestamp(status.monitoring?.lastSuccessfulCommunicationAt)))
+        column.addView(text("Last seen: " + MonitoringFormatters.timestamp(status.lastSeenAt)))
+        column.addView(text(MonitoringFormatters.relativeAge(status.lastSeenAt)))
+
+        column.addView(section("Android & Parento"))
         val monitoring = status.monitoring
+        column.addView(text("Android version: " + (monitoring?.androidVersion ?: "Unavailable")))
+        column.addView(text("API level: " + (monitoring?.apiLevel?.takeIf { it > 0 }?.toString() ?: "Unavailable")))
+        column.addView(text("Parento app: " + (monitoring?.appVersion ?: "Unavailable")))
+        column.addView(text("First enrolled: " + MonitoringFormatters.timestamp(status.firstEnrolledAt)))
+
+        column.addView(section("Battery"))
+        column.addView(text("Battery: " + (monitoring?.batteryPercentage?.let { "$it%" } ?: "Unavailable")))
+        column.addView(text("Charging: " + (monitoring?.chargingState ?: "Unavailable")))
+        column.addView(text("Battery status: " + (monitoring?.batteryStatus ?: "Unavailable")))
+        column.addView(text("Telemetry: " + MonitoringFormatters.relativeAge(monitoring?.lastMonitoringUpdateAt)))
+
+        column.addView(section("Network"))
+        column.addView(text("Connection: " + (monitoring?.networkState ?: "Unavailable")))
+        column.addView(text("Last successful communication: " + MonitoringFormatters.timestamp(monitoring?.lastSuccessfulCommunicationAt)))
+
+        column.addView(section("Storage"))
+        column.addView(text("Total: " + MonitoringFormatters.bytes(monitoring?.storageTotalBytes)))
+        column.addView(text("Used: " + MonitoringFormatters.bytes(monitoring?.storageUsedBytes)))
+        column.addView(text("Available: " + MonitoringFormatters.bytes(monitoring?.storageAvailableBytes)))
+
+        column.addView(section("Memory"))
+        column.addView(text("Total: " + MonitoringFormatters.bytes(monitoring?.memoryTotalBytes)))
+        column.addView(text("Available: " + MonitoringFormatters.bytes(monitoring?.memoryAvailableBytes)))
+        column.addView(text("Low-memory state: " + (monitoring?.memoryLow?.toString() ?: "Unavailable")))
+
         if (monitoring == null) {
             column.addView(section("Monitoring"))
-            column.addView(text("Monitoring snapshot unavailable."))
-            return
+            column.addView(text("No telemetry snapshot has been reported."))
+        } else {
+            column.addView(section("Telemetry synchronization"))
+            column.addView(text("Last telemetry: " + MonitoringFormatters.timestamp(monitoring.lastMonitoringUpdateAt)))
+            column.addView(text(MonitoringFormatters.relativeAge(monitoring.lastMonitoringUpdateAt)))
+            monitoring.serverReceivedAt?.let {
+                column.addView(text("Server received: " + MonitoringFormatters.timestamp(it)))
+            }
         }
-
-        column.addView(section("Device information"))
-        column.addView(text("Android: " + monitoring.androidVersion + " (API " + monitoring.apiLevel + ")"))
-        column.addView(text("Parento app: " + monitoring.appVersion + " (" + monitoring.appVersionCode + ")"))
-        column.addView(text("Management mode: " + monitoring.managementMode.name))
-
-        column.addView(section("Health"))
-        column.addView(text("Battery: " + (monitoring.batteryPercentage?.let { it.toString() + "%" } ?: "Unavailable")))
-        column.addView(text("Charging: " + monitoring.chargingState))
-        column.addView(text("Battery status: " + monitoring.batteryStatus))
-        column.addView(text("Network: " + monitoring.networkState))
-        column.addView(text("Storage: " + formatBytes(monitoring.storageAvailableBytes) + " available / " + formatBytes(monitoring.storageTotalBytes)))
-        column.addView(text("Memory: " + formatBytes(monitoring.memoryAvailableBytes) + " available / " + formatBytes(monitoring.memoryTotalBytes)))
-        column.addView(text("Low memory: " + (monitoring.memoryLow?.toString() ?: "Unknown")))
-        column.addView(text("Last monitoring update: " + monitoring.lastMonitoringUpdateAt))
     }
 
     private fun renderCommand(column: LinearLayout, state: DeviceDetailUiState.Content) {
         column.addView(section("Command management"))
-        column.addView(text("Allowlisted command type: FUTURE_COMMAND"))
-        column.addView(text("No arbitrary command text or executable instructions are accepted."))
+        column.addView(text("Existing allowlisted command type: FUTURE_COMMAND"))
         val command = state.command
         if (command == null) {
             column.addView(button("Create FUTURE_COMMAND") {
@@ -123,26 +134,35 @@ class DeviceManagementScreen(
             }.apply { isEnabled = !state.commandBusy })
             return
         }
-
         column.addView(text("Command ID: " + command.id))
         column.addView(text("Status: " + command.status.name))
-        column.addView(text("Created: " + command.createdAt))
-        column.addView(text("Expires: " + command.expiresAt))
+        column.addView(text("Created: " + MonitoringFormatters.timestamp(command.createdAt)))
+        column.addView(text("Expires: " + MonitoringFormatters.timestamp(command.expiresAt)))
         command.resultCode?.let { column.addView(text("Result: " + it)) }
         command.errorCategory?.let { column.addView(text("Error category: " + it)) }
-
         if (command.status !in terminalStatuses) {
             column.addView(button("Refresh command") { viewModel.refreshCommand() })
             column.addView(button("Cancel command") { viewModel.cancelCommand() })
         }
     }
 
-    private fun deviceCard(device: ManagedDeviceStatus, onClick: () -> Unit) =
-        button(
-            device.displayName + " • " + device.connectionState.name +
-                " • " + device.monitoringFreshness.name,
-            onClick,
-        )
+    private fun deviceCard(device: ManagedDeviceStatus, onClick: () -> Unit): LinearLayout =
+        LinearLayout(root.context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, 8, 0, 8)
+            addView(button(device.displayName, onClick))
+            addView(text("Communication: " + connectionLabel(device.connectionState)))
+            addView(text("Monitoring: " + freshnessLabel(device.monitoringFreshness)))
+            addView(text("Battery: " + (device.monitoring?.batteryPercentage?.let { "$it%" } ?: "Unavailable")))
+            addView(text("Network: " + (device.monitoring?.networkState ?: "Unavailable")))
+            addView(text("Last telemetry: " + MonitoringFormatters.relativeAge(device.monitoring?.lastMonitoringUpdateAt)))
+            addView(text("Parento: " + (device.monitoring?.appVersion ?: "Unavailable")))
+        }
+
+    private fun statusIndicator(label: String, value: String) =
+        text("$label: $value").apply {
+            contentDescription = "$label status: $value"
+        }
 
     private fun title(value: String) = TextView(root.context).apply {
         text = value
@@ -167,6 +187,7 @@ class DeviceManagementScreen(
     private fun button(label: String, onClick: () -> Unit) = Button(root.context).apply {
         text = label
         minHeight = root.resources.getDimensionPixelSize(com.parento.admin.R.dimen.minimum_touch_target)
+        contentDescription = label
         setOnClickListener { onClick() }
     }
 
@@ -182,29 +203,27 @@ class DeviceManagementScreen(
 
     private fun connectionLabel(value: ConnectionState) = when (value) {
         ConnectionState.CONNECTED -> "Connected"
-        ConnectionState.DISCONNECTED -> "Disconnected / recently seen"
+        ConnectionState.DISCONNECTED -> "Disconnected"
         ConnectionState.CONNECTING -> "Connecting"
         ConnectionState.RECONNECTING -> "Reconnecting"
         ConnectionState.ERROR -> "Unavailable"
     }
 
     private fun freshnessLabel(value: MonitoringFreshness) = when (value) {
-        MonitoringFreshness.CURRENT -> "Current"
+        MonitoringFreshness.CURRENT -> "Fresh"
         MonitoringFreshness.STALE -> "Stale"
+        MonitoringFreshness.VERY_STALE -> "Very stale"
+        MonitoringFreshness.NEVER_REPORTED -> "Never reported"
+        MonitoringFreshness.DISCONNECTED -> "Offline"
+        MonitoringFreshness.REVOKED -> "Revoked"
         MonitoringFreshness.UNKNOWN -> "Unknown"
     }
 
-    private fun formatBytes(value: Long?): String {
-        if (value == null) return "Unavailable"
-        if (value < 1024L) return value.toString() + " B"
-        val units = arrayOf("KB", "MB", "GB", "TB")
-        var amount = value.toDouble()
-        var index = -1
-        while (amount >= 1024 && index < units.lastIndex) {
-            amount /= 1024
-            index++
-        }
-        return String.format(Locale.US, "%.1f %s", amount, units[index])
+    private fun managementLabel(value: ManagementMode) = when (value) {
+        ManagementMode.UNMANAGED -> "Unmanaged"
+        ManagementMode.PROFILE_OWNER -> "Profile Owner"
+        ManagementMode.DEVICE_OWNER -> "Device Owner"
+        ManagementMode.UNKNOWN -> "Unknown"
     }
 
     private val terminalStatuses = setOf(

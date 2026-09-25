@@ -18,21 +18,26 @@ import com.parento.admin.navigation.AdminNavigator
 import com.parento.admin.ui.AdminHomeScreen
 import com.parento.admin.ui.AdminHomeViewModel
 import com.parento.admin.ui.AdminLoginScreen
-import com.parento.admin.ui.AdminUiState
 import com.parento.admin.ui.AuthenticationViewModel
 import com.parento.admin.ui.AuthenticationViewModelFactory
+import com.parento.admin.ui.DeviceDetailUiState
+import com.parento.admin.ui.DeviceListUiState
+import com.parento.admin.ui.DeviceManagementScreen
+import com.parento.admin.ui.DeviceManagementViewModel
+import com.parento.admin.ui.DeviceManagementViewModelFactory
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private var hasCompletedInitialStart = false
+    private var showingDeviceDetail = false
+
+    private val appContainer
+        get() = (application as ParentoAdminApplication).appContainer
 
     private val authViewModel: AuthenticationViewModel by lazy {
         ViewModelProvider(
             this,
-            AuthenticationViewModelFactory(
-                (application as ParentoAdminApplication)
-                    .appContainer.authenticationRepository,
-            ),
+            AuthenticationViewModelFactory(appContainer.authenticationRepository),
         )[AuthenticationViewModel::class.java]
     }
 
@@ -40,8 +45,17 @@ class MainActivity : AppCompatActivity() {
         ViewModelProvider(this)[AdminHomeViewModel::class.java]
     }
 
-    private val navigator = AdminNavigator()
+    private val deviceViewModel: DeviceManagementViewModel by lazy {
+        ViewModelProvider(
+            this,
+            DeviceManagementViewModelFactory(
+                repository = appContainer.managedDeviceRepository,
+                onSessionExpired = { authViewModel.validateCurrentSession() },
+            ),
+        )[DeviceManagementViewModel::class.java]
+    }
 
+    private val navigator = AdminNavigator()
     private lateinit var contentRoot: FrameLayout
     private lateinit var toolbar: MaterialToolbar
 
@@ -50,15 +64,9 @@ class MainActivity : AppCompatActivity() {
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
 
         val root = FrameLayout(this)
-        val column = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-
-        toolbar = MaterialToolbar(this).apply {
-            title = getString(R.string.app_name)
-        }
+        val column = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        toolbar = MaterialToolbar(this).apply { title = getString(R.string.app_name) }
         contentRoot = FrameLayout(this)
-
         column.addView(toolbar)
         column.addView(
             contentRoot,
@@ -75,8 +83,22 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                authViewModel.state.collect { state ->
-                    renderAuthenticationState(state)
+                launch {
+                    authViewModel.state.collect { state -> renderAuthenticationState(state) }
+                }
+                launch {
+                    deviceViewModel.listState.collect {
+                        if (navigator.currentDestination == AdminDestination.DEVICES && !showingDeviceDetail) {
+                            renderDeviceList()
+                        }
+                    }
+                }
+                launch {
+                    deviceViewModel.detailState.collect {
+                        if (navigator.currentDestination == AdminDestination.DEVICES && showingDeviceDetail) {
+                            renderDeviceDetail()
+                        }
+                    }
                 }
             }
         }
@@ -85,6 +107,14 @@ class MainActivity : AppCompatActivity() {
             this,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
+                    if (authViewModel.state.value is AuthenticationState.Authenticated &&
+                        navigator.currentDestination == AdminDestination.DEVICES &&
+                        showingDeviceDetail
+                    ) {
+                        showingDeviceDetail = false
+                        renderDeviceList()
+                        return
+                    }
                     if (authViewModel.state.value is AuthenticationState.Authenticated &&
                         navigator.currentDestination != AdminDestination.HOME
                     ) {
@@ -101,16 +131,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        if (hasCompletedInitialStart) {
-            authViewModel.validateCurrentSession()
-        } else {
-            hasCompletedInitialStart = true
-        }
+        if (hasCompletedInitialStart) authViewModel.validateCurrentSession()
+        else hasCompletedInitialStart = true
     }
 
     private fun renderAuthenticationState(state: AuthenticationState) {
         toolbar.menu.clear()
-
         when (state) {
             AuthenticationState.Unauthenticated,
             AuthenticationState.Authenticating,
@@ -118,23 +144,20 @@ class MainActivity : AppCompatActivity() {
             AuthenticationState.SessionExpired,
             AuthenticationState.SessionRevoked,
             AuthenticationState.AccountDisabled -> {
+                showingDeviceDetail = false
+                navigator.navigate(AdminDestination.HOME)
                 toolbar.title = getString(R.string.login_title)
                 contentRoot.removeAllViews()
                 contentRoot.addView(FrameLayout(this).also { frame ->
                     AdminLoginScreen(frameAsColumn(frame), authViewModel).render(state)
                 })
             }
-
-            is AuthenticationState.Authenticated -> {
-                renderAuthenticatedState()
-            }
+            is AuthenticationState.Authenticated -> renderAuthenticatedState()
         }
     }
 
     private fun frameAsColumn(frame: FrameLayout): LinearLayout {
-        val column = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-        }
+        val column = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         frame.addView(
             column,
             FrameLayout.LayoutParams(
@@ -146,8 +169,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderAuthenticatedState() {
-        val admin = (authViewModel.state.value as? AuthenticationState.Authenticated)?.admin
-            ?: return
+        val admin = (authViewModel.state.value as? AuthenticationState.Authenticated)?.admin ?: return
         toolbar.menu.clear()
         toolbar.title = getString(R.string.dashboard_title)
         toolbar.menu.add(R.string.logout).apply {
@@ -157,24 +179,31 @@ class MainActivity : AppCompatActivity() {
                 true
             }
         }
-
+        if (navigator.currentDestination == AdminDestination.DEVICES) {
+            renderAuthenticatedDestination()
+            return
+        }
         contentRoot.removeAllViews()
-        contentRoot.addView(FrameLayout(this).also { frame ->
-            AdminHomeScreen(frame, homeViewModel, admin) { target ->
-                navigator.navigate(target)
-                renderAuthenticatedDestination()
-            }.render(homeViewModel.uiState.value)
-        })
+        contentRoot.addView(
+            FrameLayout(this).also { frame ->
+                AdminHomeScreen(frame, homeViewModel, admin) { target ->
+                    navigator.navigate(target)
+                    renderAuthenticatedDestination()
+                }.render(homeViewModel.uiState.value)
+            },
+        )
     }
 
     private fun renderAuthenticatedDestination() {
         contentRoot.removeAllViews()
+        showingDeviceDetail = false
         when (navigator.currentDestination) {
             AdminDestination.HOME -> renderAuthenticatedState()
-            AdminDestination.DEVICES -> renderPlaceholder(
-                R.string.nav_devices,
-                R.string.devices_placeholder,
-            )
+            AdminDestination.DEVICES -> {
+                toolbar.title = getString(R.string.nav_devices)
+                renderDeviceList()
+                deviceViewModel.loadDevices()
+            }
             AdminDestination.POLICIES -> renderPlaceholder(
                 R.string.nav_policies,
                 R.string.policies_placeholder,
@@ -184,6 +213,34 @@ class MainActivity : AppCompatActivity() {
                 R.string.settings_placeholder,
             )
         }
+    }
+
+    private fun renderDeviceList() {
+        if (navigator.currentDestination != AdminDestination.DEVICES || showingDeviceDetail) return
+        toolbar.title = getString(R.string.nav_devices)
+        contentRoot.removeAllViews()
+        contentRoot.addView(FrameLayout(this).also { frame ->
+            DeviceManagementScreen(frame, deviceViewModel).renderList(
+                deviceViewModel.listState.value,
+            ) { deviceId ->
+                showingDeviceDetail = true
+                deviceViewModel.openDevice(deviceId)
+            }
+        })
+    }
+
+    private fun renderDeviceDetail() {
+        if (navigator.currentDestination != AdminDestination.DEVICES || !showingDeviceDetail) return
+        toolbar.title = getString(R.string.nav_devices)
+        contentRoot.removeAllViews()
+        contentRoot.addView(FrameLayout(this).also { frame ->
+            DeviceManagementScreen(frame, deviceViewModel).renderDetail(
+                deviceViewModel.detailState.value,
+            ) {
+                showingDeviceDetail = false
+                renderDeviceList()
+            }
+        })
     }
 
     private fun renderPlaceholder(titleRes: Int, messageRes: Int) {

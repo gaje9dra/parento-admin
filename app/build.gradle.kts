@@ -19,7 +19,8 @@ android {
         buildConfigField("boolean", "PARENTO_FEATURE_AUTHENTICATION", "true")
         buildConfigField("boolean", "PARENTO_FEATURE_ENROLLMENT", "false")
         buildConfigField("boolean", "PARENTO_FEATURE_DEVICE_COMMUNICATION", "false")
-        buildConfigField("boolean", "PARENTO_FEATURE_LOCATION", "false")
+        buildConfigField("boolean", "PARENTO_FEATURE_LOCATION", "true")
+        buildConfigField("String", "PARENTO_MAPS_API_KEY", "\"\"")
         buildConfigField("boolean", "PARENTO_FEATURE_SCREEN_SHARING", "false")
         buildConfigField("boolean", "PARENTO_FEATURE_AUDIO", "false")
         buildConfigField("boolean", "PARENTO_FEATURE_APPLICATION_MANAGEMENT", "false")
@@ -28,6 +29,11 @@ android {
     }
 
     buildFeatures { buildConfig = true }
+
+    val mapsApiKey = providers.gradleProperty("MAPS_API_KEY").orElse("").get()
+    defaultConfig {
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+    }
 
     buildTypes {
         getByName("debug") {
@@ -74,6 +80,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.3")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.3")
     implementation("com.google.android.material:material:1.13.0")
+    implementation("com.google.android.gms:play-services-maps:20.0.0")
 
     implementation("androidx.room:room-runtime:2.8.5")
     implementation("androidx.room:room-ktx:2.8.5")

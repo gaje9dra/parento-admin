@@ -5,6 +5,7 @@ import com.parento.admin.communication.AuthenticationApiClient
 import com.parento.admin.config.AdminApplicationConfig
 import com.parento.admin.data.local.LocalDatabaseFactory
 import com.parento.admin.data.local.ParentoAdminDatabase
+import com.parento.admin.domain.DeviceMonitoringRepository
 import com.parento.admin.security.SecureSessionStore
 
 class AdminAppContainer(context: Context) : AutoCloseable {
@@ -29,6 +30,17 @@ class AdminAppContainer(context: Context) : AutoCloseable {
             api = AuthenticationApiClient(AdminApplicationConfig.get()),
             secureStore = secureSessionStore,
         )
+    }
+
+    /**
+     * Phase 7.3 monitoring boundary. The backend currently has no authenticated
+     * Admin device-list/detail telemetry endpoints, so this remains explicit
+     * rather than inventing a network contract or returning fake data.
+     */
+    val deviceMonitoringRepository: DeviceMonitoringRepository by lazy(
+        LazyThreadSafetyMode.SYNCHRONIZED,
+    ) {
+        UnavailableDeviceMonitoringRepository()
     }
 
     override fun close() {

@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class LocationViewModel(
-    private val deviceId: String,
+    val deviceId: String,
     private val useCase: DeviceLocationUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<LocationUiState>(LocationUiState.Loading)

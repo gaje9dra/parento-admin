@@ -13,6 +13,7 @@ import java.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -48,6 +49,42 @@ class EnrollmentViewModelTest {
         val state = vm.uiState.value as EnrollmentUiState.Active
         assertEquals("secret-value", state.authorizationSecret)
         assertEquals("enrollment-1", state.enrollment.id)
+    }
+
+    
+    @Test
+    fun ambiguousCreate_reconcilesExistingEnrollment_insteadOfCreatingAgain() = runTest {
+        repository.nextCreateResult =
+            OperationResult.Failure(AdminError.Timeout)
+        repository.listResult = listOf(repository.sessionFor(EnrollmentSessionStatus.PENDING))
+
+        val vm = EnrollmentViewModel(repository)
+        vm.createEnrollment()
+        advanceUntilIdle()
+
+        val state = vm.uiState.value as EnrollmentUiState.Error
+        assertEquals("enrollment-1", state.enrollment?.id)
+        assertTrue(!state.canRetry)
+        assertEquals(1, repository.createCalls)
+
+        vm.reconcileCreateFailure()
+        advanceUntilIdle()
+
+        assertEquals(1, repository.createCalls)
+    }
+
+    @Test
+    fun polling_stopsWhenServerReportsTerminalState() = runTest {
+        val vm = EnrollmentViewModel(repository)
+        vm.createEnrollment()
+        advanceUntilIdle()
+
+        repository.status = EnrollmentSessionStatus.EXPIRED
+        vm.startPolling()
+        advanceTimeBy(5_000)
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value is EnrollmentUiState.Terminal)
     }
 
     @Test
@@ -124,6 +161,17 @@ class EnrollmentViewModelTest {
         var status = EnrollmentSessionStatus.PENDING
         var deviceId: String? = null
         var nextGetResult: OperationResult<EnrollmentSession>? = null
+        var nextCreateResult: OperationResult<EnrollmentCreation>? = null
+        var listResult: List<EnrollmentSession>? = null
+        var createCalls = 0
+
+        fun sessionFor(state: EnrollmentSessionStatus): EnrollmentSession {
+            val previous = status
+            status = state
+            val result = session()
+            status = previous
+            return result
+        }
 
         private fun session(): EnrollmentSession =
             EnrollmentSession(
@@ -147,14 +195,18 @@ class EnrollmentViewModelTest {
                 verificationAttempts = 0,
             )
 
-        override suspend fun create(): OperationResult<EnrollmentCreation> =
-            OperationResult.Success(EnrollmentCreation(session(), "secret-value"))
+        override suspend fun create(): OperationResult<EnrollmentCreation> {
+            createCalls++
+            return nextCreateResult ?: OperationResult.Success(
+                EnrollmentCreation(session(), "secret-value"),
+            ).also { nextCreateResult = null }
+        }
 
         override suspend fun get(enrollmentId: String): OperationResult<EnrollmentSession> =
             nextGetResult ?: OperationResult.Success(session()).also { nextGetResult = null }
 
         override suspend fun list(): OperationResult<List<EnrollmentSession>> =
-            OperationResult.Success(listOf(session()))
+            OperationResult.Success(listResult ?: listOf(session()))
 
         override suspend fun cancel(enrollmentId: String): OperationResult<EnrollmentSession> {
             status = EnrollmentSessionStatus.CANCELLED

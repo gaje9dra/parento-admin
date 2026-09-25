@@ -68,6 +68,10 @@ android {
     }
 
     kotlinOptions { jvmTarget = "17" }
+
+    compileOptions {
+        isCoreLibraryDesugaringEnabled = true
+    }
 }
 
 room {
@@ -85,6 +89,8 @@ dependencies {
     implementation("androidx.room:room-runtime:2.8.5")
     implementation("androidx.room:room-ktx:2.8.5")
     ksp("androidx.room:room-compiler:2.8.5")
+
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")

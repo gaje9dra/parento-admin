@@ -109,7 +109,7 @@ class EnrollmentViewModel(
                             }
                             _uiState.value = EnrollmentUiState.Error(
                                 message = messageFor(result.error),
-                                enrollment = currentEnrollment(),
+                                enrollment = if (result.error.stopsPolling()) null else currentEnrollment(),
                                 canRetry = result.error.retryable(),
                             )
                         }

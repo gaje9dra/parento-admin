@@ -24,6 +24,7 @@ import com.parento.admin.ui.AuthenticationViewModelFactory
 import com.parento.admin.ui.DeviceMonitoringScreen
 import com.parento.admin.ui.DeviceMonitoringUiState
 import com.parento.admin.ui.DeviceMonitoringViewModel
+import com.parento.admin.ui.DeviceMonitoringViewModelFactory
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
@@ -46,12 +47,12 @@ class MainActivity : AppCompatActivity() {
     private val navigator = AdminNavigator()
 
     private val deviceMonitoringViewModel: DeviceMonitoringViewModel by lazy {
-        ViewModelProvider(this)[DeviceMonitoringViewModel::class.java].also { viewModel ->
-            if (viewModel.state.value is DeviceMonitoringUiState.Loading) {
-                // Repository wiring is owned by the application container; this ViewModel
-                // is created through the explicit factory below in onCreate.
-            }
-        }
+        ViewModelProvider(
+            this,
+            DeviceMonitoringViewModelFactory(
+                (application as ParentoAdminApplication).appContainer.deviceMonitoringRepository,
+            ),
+        )[DeviceMonitoringViewModel::class.java]
     }
 
     private lateinit var contentRoot: FrameLayout

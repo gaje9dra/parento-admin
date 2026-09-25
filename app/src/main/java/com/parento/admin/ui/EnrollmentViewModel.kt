@@ -49,16 +49,19 @@ class EnrollmentViewModel(
 
     fun refresh() {
         if (operationInFlight) return
-        val enrollment = currentEnrollment() ?: return
+        val enrollmentId = when (val state = _uiState.value) {
+            is EnrollmentUiState.Restoring -> state.enrollmentId
+            else -> currentEnrollment()?.id
+        } ?: return
         operationInFlight = true
         viewModelScope.launch {
             try {
                 operationMutex.withLock {
-                    when (val result = repository.get(enrollment.id)) {
+                    when (val result = repository.get(enrollmentId)) {
                         is OperationResult.Success -> _uiState.value = stateFor(result.value, secretForState())
                         is OperationResult.Failure -> {
                             if (result.error == AdminError.SessionExpired) onSessionExpired()
-                            _uiState.value = EnrollmentUiState.Error(messageFor(result.error), enrollment, result.error.retryable())
+                            _uiState.value = EnrollmentUiState.Error(messageFor(result.error), currentEnrollment(), result.error.retryable())
                         }
                     }
                 }
@@ -110,6 +113,7 @@ class EnrollmentViewModel(
         is EnrollmentUiState.Completed -> state.enrollment
         is EnrollmentUiState.Terminal -> state.enrollment
         is EnrollmentUiState.Error -> state.enrollment
+        is EnrollmentUiState.Restoring -> null
         else -> null
     }
 
@@ -127,11 +131,7 @@ class EnrollmentViewModel(
 
     private fun restoreState(): EnrollmentUiState {
         val id = savedStateHandle.get<String>(ENROLLMENT_ID_KEY) ?: return EnrollmentUiState.Ready
-        return EnrollmentUiState.Error(
-            message = "Restoring enrollment status…",
-            enrollment = EnrollmentSession(id, EnrollmentSessionStatus.PENDING, java.time.Instant.EPOCH, java.time.Instant.EPOCH, java.time.Instant.EPOCH, null, null, null, null, 0),
-            canRetry = true,
-        )
+        return EnrollmentUiState.Restoring(id)
     }
 
     private fun showFailure(error: AdminError) {

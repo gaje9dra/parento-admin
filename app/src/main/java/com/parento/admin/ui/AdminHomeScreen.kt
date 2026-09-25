@@ -52,6 +52,7 @@ class AdminHomeScreen(
         }
 
         content.addView(navigationButton(AdminDestination.ENROLLMENT, R.string.nav_enrollment))
+        content.addView(navigationButton(AdminDestination.ENROLLMENT, R.string.nav_enrollment))
         content.addView(navigationButton(AdminDestination.DEVICES, R.string.nav_devices))
         content.addView(navigationButton(AdminDestination.POLICIES, R.string.nav_policies))
         content.addView(navigationButton(AdminDestination.SETTINGS, R.string.nav_settings))

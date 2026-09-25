@@ -32,7 +32,9 @@ class AdminAppContainer(context: Context) : AutoCloseable {
         )
     }
 
-    val enrollmentRepository: EnrollmentRepositoryImpl by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    val enrollmentRepository: EnrollmentRepositoryImpl by lazy(
+        LazyThreadSafetyMode.SYNCHRONIZED,
+    ) {
         EnrollmentRepositoryImpl(
             api = EnrollmentApiClient(AdminApplicationConfig.get()),
             sessionStore = secureSessionStore,

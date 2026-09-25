@@ -6,6 +6,7 @@ import com.parento.admin.domain.EnrollmentSessionStatus
 sealed interface EnrollmentUiState {
     data object Ready : EnrollmentUiState
     data object Creating : EnrollmentUiState
+    data class Restoring(val enrollmentId: String) : EnrollmentUiState
     data class Active(
         val enrollment: EnrollmentSession,
         val authorizationSecret: String?,
@@ -21,4 +22,6 @@ sealed interface EnrollmentUiState {
 }
 
 fun EnrollmentSessionStatus.isActiveForAdmin(): Boolean =
-    this == EnrollmentSessionStatus.CREATED || this == EnrollmentSessionStatus.PENDING || this == EnrollmentSessionStatus.VERIFIED
+    this == EnrollmentSessionStatus.CREATED ||
+        this == EnrollmentSessionStatus.PENDING ||
+        this == EnrollmentSessionStatus.VERIFIED

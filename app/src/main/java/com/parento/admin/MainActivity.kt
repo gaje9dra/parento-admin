@@ -21,20 +21,36 @@ import com.parento.admin.ui.AdminLoginScreen
 import com.parento.admin.ui.AuthenticationViewModel
 import com.parento.admin.ui.AuthenticationViewModelFactory
 import com.parento.admin.ui.EnrollmentScreen
-import com.parento.admin.ui.EnrollmentUiState
 import com.parento.admin.ui.EnrollmentViewModel
 import com.parento.admin.ui.EnrollmentViewModelFactory
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private var hasCompletedInitialStart = false
+
     private val authViewModel: AuthenticationViewModel by lazy {
-        ViewModelProvider(this, AuthenticationViewModelFactory((application as ParentoAdminApplication).appContainer.authenticationRepository))[AuthenticationViewModel::class.java]
+        ViewModelProvider(
+            this,
+            AuthenticationViewModelFactory(
+                (application as ParentoAdminApplication).appContainer.authenticationRepository,
+            ),
+        )[AuthenticationViewModel::class.java]
     }
-    private val homeViewModel: AdminHomeViewModel by lazy { ViewModelProvider(this)[AdminHomeViewModel::class.java] }
+
+    private val homeViewModel: AdminHomeViewModel by lazy {
+        ViewModelProvider(this)[AdminHomeViewModel::class.java]
+    }
+
     private val enrollmentViewModel: EnrollmentViewModel by lazy {
-        ViewModelProvider(this, EnrollmentViewModelFactory(this, (application as ParentoAdminApplication).appContainer.enrollmentRepository) { authViewModel.logout() })[EnrollmentViewModel::class.java]
+        ViewModelProvider(
+            this,
+            EnrollmentViewModelFactory(
+                this,
+                (application as ParentoAdminApplication).appContainer.enrollmentRepository,
+            ) { authViewModel.logout() },
+        )[EnrollmentViewModel::class.java]
     }
+
     private val navigator = AdminNavigator()
     private lateinit var contentRoot: FrameLayout
     private lateinit var toolbar: MaterialToolbar
@@ -42,37 +58,78 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+
         val root = FrameLayout(this)
         val column = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         toolbar = MaterialToolbar(this).apply { title = getString(R.string.app_name) }
         contentRoot = FrameLayout(this)
+
         column.addView(toolbar)
-        column.addView(contentRoot, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        column.addView(
+            contentRoot,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f,
+            ),
+        )
         root.addView(column)
         setContentView(root)
+
         authViewModel.restoreSession()
+
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                authViewModel.state.collect { renderAuthenticationState(it) }
-            }
-        }
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                if (authViewModel.state.value is AuthenticationState.Authenticated && navigator.currentDestination != AdminDestination.HOME) {
-                    enrollmentViewModel.stopPolling()
-                    navigator.navigate(AdminDestination.HOME)
-                    renderAuthenticatedState()
-                } else {
-                    isEnabled = false
-                    onBackPressedDispatcher.onBackPressed()
+                launch {
+                    authViewModel.state.collect(::renderAuthenticationState)
+                }
+                launch {
+                    enrollmentViewModel.uiState.collect {
+                        if (
+                            authViewModel.state.value is AuthenticationState.Authenticated &&
+                            navigator.currentDestination == AdminDestination.ENROLLMENT
+                        ) {
+                            renderEnrollmentDestination()
+                        }
+                    }
                 }
             }
-        })
+        }
+
+        onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    if (
+                        authViewModel.state.value is AuthenticationState.Authenticated &&
+                        navigator.currentDestination != AdminDestination.HOME
+                    ) {
+                        enrollmentViewModel.stopPolling()
+                        navigator.navigate(AdminDestination.HOME)
+                        renderAuthenticatedState()
+                    } else {
+                        isEnabled = false
+                        onBackPressedDispatcher.onBackPressed()
+                    }
+                }
+            },
+        )
     }
 
     override fun onStart() {
         super.onStart()
-        if (hasCompletedInitialStart) authViewModel.validateCurrentSession() else hasCompletedInitialStart = true
+        if (hasCompletedInitialStart) {
+            authViewModel.validateCurrentSession()
+            if (
+                authViewModel.state.value is AuthenticationState.Authenticated &&
+                navigator.currentDestination == AdminDestination.ENROLLMENT
+            ) {
+                enrollmentViewModel.refresh()
+                enrollmentViewModel.startPolling()
+            }
+        } else {
+            hasCompletedInitialStart = true
+        }
     }
 
     override fun onStop() {
@@ -82,6 +139,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderAuthenticationState(state: AuthenticationState) {
         toolbar.menu.clear()
+
         when (state) {
             AuthenticationState.Unauthenticated,
             AuthenticationState.Authenticating,
@@ -93,23 +151,41 @@ class MainActivity : AppCompatActivity() {
                 toolbar.title = getString(R.string.login_title)
                 contentRoot.removeAllViews()
                 contentRoot.addView(FrameLayout(this).also { frame ->
-                    val column = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-                    frame.addView(column, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
-                    AdminLoginScreen(column, authViewModel).render(state)
+                    AdminLoginScreen(frameAsColumn(frame), authViewModel).render(state)
                 })
             }
+
             is AuthenticationState.Authenticated -> renderAuthenticatedState()
         }
     }
 
+    private fun frameAsColumn(frame: FrameLayout): LinearLayout {
+        val column = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        frame.addView(
+            column,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+            ),
+        )
+        return column
+    }
+
     private fun renderAuthenticatedState() {
-        val admin = (authViewModel.state.value as? AuthenticationState.Authenticated)?.admin ?: return
+        val admin =
+            (authViewModel.state.value as? AuthenticationState.Authenticated)?.admin ?: return
+
         toolbar.menu.clear()
         toolbar.title = getString(R.string.dashboard_title)
         toolbar.menu.add(R.string.logout).apply {
             setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
-            setOnMenuItemClickListener { authViewModel.logout(); true }
+            setOnMenuItemClickListener {
+                enrollmentViewModel.stopPolling()
+                authViewModel.logout()
+                true
+            }
         }
+
         contentRoot.removeAllViews()
         contentRoot.addView(FrameLayout(this).also { frame ->
             AdminHomeScreen(frame, homeViewModel, admin) { target ->
@@ -123,18 +199,34 @@ class MainActivity : AppCompatActivity() {
         contentRoot.removeAllViews()
         when (navigator.currentDestination) {
             AdminDestination.HOME -> renderAuthenticatedState()
-            AdminDestination.ENROLLMENT -> {
-                toolbar.title = getString(R.string.enrollment_title)
-                contentRoot.addView(FrameLayout(this).also { frame ->
-                    EnrollmentScreen(frame, enrollmentViewModel).render(enrollmentViewModel.uiState.value)
-                })
-                if (enrollmentViewModel.uiState.value is EnrollmentUiState.Error) enrollmentViewModel.refresh()
-                enrollmentViewModel.startPolling()
-            }
-            AdminDestination.DEVICES -> renderPlaceholder(R.string.nav_devices, R.string.devices_placeholder)
-            AdminDestination.POLICIES -> renderPlaceholder(R.string.nav_policies, R.string.policies_placeholder)
-            AdminDestination.SETTINGS -> renderPlaceholder(R.string.nav_settings, R.string.settings_placeholder)
+            AdminDestination.ENROLLMENT -> renderEnrollmentDestination()
+            AdminDestination.DEVICES -> renderPlaceholder(
+                R.string.nav_devices,
+                R.string.devices_placeholder,
+            )
+            AdminDestination.POLICIES -> renderPlaceholder(
+                R.string.nav_policies,
+                R.string.policies_placeholder,
+            )
+            AdminDestination.SETTINGS -> renderPlaceholder(
+                R.string.nav_settings,
+                R.string.settings_placeholder,
+            )
         }
+    }
+
+    private fun renderEnrollmentDestination() {
+        toolbar.title = getString(R.string.enrollment_title)
+        contentRoot.removeAllViews()
+        contentRoot.addView(
+            FrameLayout(this).also { frame ->
+                EnrollmentScreen(frame, enrollmentViewModel).render(enrollmentViewModel.uiState.value)
+            },
+        )
+        if (enrollmentViewModel.uiState.value is com.parento.admin.ui.EnrollmentUiState.Restoring) {
+            enrollmentViewModel.refresh()
+        }
+        enrollmentViewModel.startPolling()
     }
 
     private fun renderPlaceholder(titleRes: Int, messageRes: Int) {

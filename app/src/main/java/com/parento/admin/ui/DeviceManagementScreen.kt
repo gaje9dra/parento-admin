@@ -42,7 +42,7 @@ class DeviceManagementScreen(
 
         val idInput = EditText(root.context).apply {
             hint = "Managed device ID (UUID)"
-            singleLine = true
+            setSingleLine(true)
         }
         column.addView(idInput)
         column.addView(button("Open device") {

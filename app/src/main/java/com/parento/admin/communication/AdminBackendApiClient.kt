@@ -181,10 +181,10 @@ class AdminBackendApiClient(
     private fun parseCommand(json: JSONObject) = AdminCommand(
         id = json.getString("id"),
         deviceId = json.getString("managedDeviceId"),
-        type = AdminCommandType.entries.firstOrNull { it.wireValue == json.optString("type") }
+        type = AdminCommandType.values().firstOrNull { it.wireValue == json.optString("type") }
             ?: throw IllegalArgumentException("Unsupported command type"),
         version = json.getInt("version"),
-        status = CommandStatus.entries.firstOrNull { it.name == json.optString("status") }
+        status = CommandStatus.values().firstOrNull { it.name == json.optString("status") }
             ?: throw IllegalArgumentException("Unsupported command status"),
         createdAt = json.getString("createdAt"),
         expiresAt = json.getString("expiresAt"),

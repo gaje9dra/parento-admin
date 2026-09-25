@@ -184,7 +184,7 @@ class DeviceManagementViewModel(
         AdminError.Timeout -> "The request timed out."
         AdminError.Authorization -> "This device operation is not authorized."
         AdminError.SessionExpired, AdminError.SessionRevoked -> "Your administrator session has expired."
-        AdminError.DeviceNotFound -> "The managed device was not found."
+        is AdminError.DeviceNotFound -> "The managed device was not found."
         AdminError.InvalidState -> "The requested operation is not valid for the current state."
         AdminError.ServerUnavailable -> "The Parento server is temporarily unavailable."
         AdminError.Validation -> "The request was rejected as invalid."

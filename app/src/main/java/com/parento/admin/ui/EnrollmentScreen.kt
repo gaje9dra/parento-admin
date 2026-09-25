@@ -100,6 +100,8 @@ class EnrollmentScreen(
             addAction(container, R.string.create_enrollment) { viewModel.createEnrollment() }
         } else if (state.message.contains("outcome is unknown", ignoreCase = true)) {
             addAction(container, R.string.refresh_enrollment) { viewModel.reconcileCreateFailure() }
+        } else {
+            Unit
         }
     }
 

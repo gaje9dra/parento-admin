@@ -56,7 +56,10 @@ class EnrollmentViewModelTest {
     fun ambiguousCreate_reconcilesExistingEnrollment_insteadOfCreatingAgain() = runTest {
         repository.nextCreateResult =
             OperationResult.Failure(AdminError.Timeout)
-        repository.listResult = listOf(repository.sessionFor(EnrollmentSessionStatus.PENDING))
+        repository.listResults = mutableListOf(
+            emptyList(),
+            listOf(repository.sessionFor(EnrollmentSessionStatus.PENDING)),
+        )
 
         val vm = EnrollmentViewModel(repository)
         vm.createEnrollment()
@@ -162,7 +165,7 @@ class EnrollmentViewModelTest {
         var deviceId: String? = null
         var nextGetResult: OperationResult<EnrollmentSession>? = null
         var nextCreateResult: OperationResult<EnrollmentCreation>? = null
-        var listResult: List<EnrollmentSession>? = null
+        var listResults: MutableList<List<EnrollmentSession>> = mutableListOf()
         var createCalls = 0
 
         fun sessionFor(state: EnrollmentSessionStatus): EnrollmentSession {
@@ -206,7 +209,9 @@ class EnrollmentViewModelTest {
             nextGetResult ?: OperationResult.Success(session()).also { nextGetResult = null }
 
         override suspend fun list(): OperationResult<List<EnrollmentSession>> =
-            OperationResult.Success(listResult ?: listOf(session()))
+            OperationResult.Success(
+                if (listResults.isNotEmpty()) listResults.removeAt(0) else listOf(session()),
+            )
 
         override suspend fun cancel(enrollmentId: String): OperationResult<EnrollmentSession> {
             status = EnrollmentSessionStatus.CANCELLED

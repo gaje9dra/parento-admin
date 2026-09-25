@@ -6,4 +6,5 @@
     <dimen name="item_spacing">8dp</dimen>
     <dimen name="section_spacing">24dp</dimen>
     <dimen name="state_min_height">120dp</dimen>
+    <dimen name="location_map_height">360dp</dimen>
 </resources>

@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private var hasCompletedInitialStart = false
+    private var hasRequestedDeviceMonitoring = false
 
     private val authViewModel: AuthenticationViewModel by lazy {
         ViewModelProvider(
@@ -225,7 +226,8 @@ class MainActivity : AppCompatActivity() {
                 },
             ).render(deviceMonitoringViewModel.state.value)
         })
-        if (deviceMonitoringViewModel.state.value is DeviceMonitoringUiState.Loading) {
+        if (!hasRequestedDeviceMonitoring) {
+            hasRequestedDeviceMonitoring = true
             deviceMonitoringViewModel.load()
         }
     }

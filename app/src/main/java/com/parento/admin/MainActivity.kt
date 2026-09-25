@@ -94,6 +94,18 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                deviceMonitoringViewModel.state.collect { state ->
+                    if (authViewModel.state.value is AuthenticationState.Authenticated &&
+                        navigator.currentDestination == AdminDestination.DEVICES
+                    ) {
+                        renderDeviceMonitoring(state)
+                    }
+                }
+            }
+        }
+
         onBackPressedDispatcher.addCallback(
             this,
             object : OnBackPressedCallback(true) {
@@ -213,6 +225,7 @@ class MainActivity : AppCompatActivity() {
                 },
             ).render(deviceMonitoringViewModel.state.value)
         })
+        deviceMonitoringViewModel.load()
     }
 
     private fun renderDeviceDetail() {

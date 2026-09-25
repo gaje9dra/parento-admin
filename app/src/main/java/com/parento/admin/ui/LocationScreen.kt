@@ -31,10 +31,10 @@ class LocationScreen(
         val content = LinearLayout(root.context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(
-                resources.getDimensionPixelSize(R.dimen.screen_padding),
-                resources.getDimensionPixelSize(R.dimen.screen_padding),
-                resources.getDimensionPixelSize(R.dimen.screen_padding),
-                resources.getDimensionPixelSize(R.dimen.screen_padding),
+                root.resources.getDimensionPixelSize(R.dimen.screen_padding),
+                root.resources.getDimensionPixelSize(R.dimen.screen_padding),
+                root.resources.getDimensionPixelSize(R.dimen.screen_padding),
+                root.resources.getDimensionPixelSize(R.dimen.screen_padding),
             )
         }
 
@@ -45,7 +45,7 @@ class LocationScreen(
         content.addView(MaterialButton(root.context).apply {
             text = root.context.getString(R.string.location_back)
             contentDescription = text
-            minHeight = resources.getDimensionPixelSize(R.dimen.minimum_touch_target)
+            minHeight = root.resources.getDimensionPixelSize(R.dimen.minimum_touch_target)
             setOnClickListener { onBack() }
         })
         content.addView(MaterialTextView(root.context).apply {
@@ -55,7 +55,7 @@ class LocationScreen(
         content.addView(MaterialButton(root.context).apply {
             text = root.context.getString(R.string.location_refresh)
             contentDescription = root.context.getString(R.string.location_refresh)
-            minHeight = resources.getDimensionPixelSize(R.dimen.minimum_touch_target)
+            minHeight = root.resources.getDimensionPixelSize(R.dimen.minimum_touch_target)
             setOnClickListener { viewModel.refresh() }
         })
 
@@ -121,7 +121,7 @@ class LocationScreen(
         }
         content.addView(view, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
-            resources.getDimensionPixelSize(R.dimen.location_map_height),
+            root.resources.getDimensionPixelSize(R.dimen.location_map_height),
         ))
         view.getMapAsync { map ->
             val point = LatLng(location.latitude!!, location.longitude!!)
@@ -148,7 +148,7 @@ class LocationScreen(
     private fun messageText(value: String) = MaterialTextView(root.context).apply {
         text = value
         textSize = 16f
-        setPadding(0, resources.getDimensionPixelSize(R.dimen.item_spacing), 0, resources.getDimensionPixelSize(R.dimen.section_spacing))
+        setPadding(0, root.resources.getDimensionPixelSize(R.dimen.item_spacing), 0, root.resources.getDimensionPixelSize(R.dimen.section_spacing))
     }
 
     private fun freshnessLabel(freshness: LocationFreshness): String = when (freshness) {

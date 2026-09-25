@@ -2,6 +2,7 @@ package com.parento.admin.data
 
 import android.content.Context
 import com.parento.admin.communication.AuthenticationApiClient
+import com.parento.admin.communication.EnrollmentApiClient
 import com.parento.admin.config.AdminApplicationConfig
 import com.parento.admin.data.local.LocalDatabaseFactory
 import com.parento.admin.data.local.ParentoAdminDatabase
@@ -28,6 +29,13 @@ class AdminAppContainer(context: Context) : AutoCloseable {
         AuthenticationRepositoryImpl(
             api = AuthenticationApiClient(AdminApplicationConfig.get()),
             secureStore = secureSessionStore,
+        )
+    }
+
+    val enrollmentRepository: EnrollmentRepositoryImpl by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        EnrollmentRepositoryImpl(
+            api = EnrollmentApiClient(AdminApplicationConfig.get()),
+            sessionStore = secureSessionStore,
         )
     }
 

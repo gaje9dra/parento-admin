@@ -13,6 +13,11 @@ sealed interface AdminError {
     data object ServerUnavailable : AdminError
     data object AuthenticationRateLimited : AdminError
     data object UnknownAuthentication : AdminError
+    data object EnrollmentNotFound : AdminError
+    data object EnrollmentExpired : AdminError
+    data object EnrollmentStateConflict : AdminError
+    data object EnrollmentAlreadyConsumed : AdminError
+    data object EnrollmentRateLimited : AdminError
     data class DeviceNotFound(val deviceId: String) : AdminError
     data object Policy : AdminError
     data object Backend : AdminError

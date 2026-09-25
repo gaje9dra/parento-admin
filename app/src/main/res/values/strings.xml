@@ -8,6 +8,7 @@
     <string name="loading_content_description">Loading</string>
     <string name="error_title">Something went wrong</string>
     <string name="retry">Retry</string>
+    <string name="nav_enrollment">Enroll Device</string>
     <string name="nav_devices">Devices</string>
     <string name="nav_policies">Policies</string>
     <string name="nav_settings">Settings</string>
@@ -22,4 +23,23 @@
     <string name="session_expired">Your session has expired. Please sign in again.</string>
     <string name="session_revoked">Your session is no longer valid. Please sign in again.</string>
     <string name="account_disabled">This administrator account is disabled.</string>
+    <string name="enrollment_title">Secure Device Enrollment</string>
+    <string name="enrollment_subtitle">Create a temporary authorization for an intentional managed-device enrollment.</string>
+    <string name="create_enrollment">Create Enrollment</string>
+    <string name="enrollment_creating">Creating enrollment…</string>
+    <string name="enrollment_waiting">Waiting for the managed device to complete enrollment.</string>
+    <string name="enrollment_expires">Authorization expires: %1$s</string>
+    <string name="enrollment_secret_warning">Treat this authorization code as sensitive. Share it only through an intentional enrollment flow.</string>
+    <string name="enrollment_secret_content_description">Temporary enrollment authorization code</string>
+    <string name="copy_enrollment_code">Copy Authorization Code</string>
+    <string name="refresh_enrollment">Refresh Status</string>
+    <string name="cancel_enrollment">Cancel Enrollment</string>
+    <string name="enrollment_status">Status: %1$s</string>
+    <string name="enrollment_completed">Enrollment completed. The managed device is now associated with this administrator.</string>
+    <string name="managed_device_id">Managed device ID: %1$s</string>
+    <string name="enrollment_expired">This enrollment has expired. Create a new enrollment to continue.</string>
+    <string name="enrollment_cancelled">This enrollment was cancelled.</string>
+    <string name="enrollment_revoked">This enrollment was revoked.</string>
+    <string name="enrollment_failed">Enrollment failed. Create a new enrollment if needed.</string>
+    <string name="enrollment_terminal">This enrollment is no longer active.</string>
 </resources>

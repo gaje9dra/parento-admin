@@ -87,6 +87,7 @@ class AdminBackendApiClient(
             deviceStatus = deviceStatus(device.optString("operationalStatus")),
             connectionState = connectionState(connection.optString("state")),
             firstEnrolledAt = nullableString(device, "firstEnrolledAt"),
+            firstEnrolledAt = nullableString(device, "firstEnrolledAt"),
             lastSeenAt = nullableString(connection, "lastSeenAt"),
             lastSeenAgeMs = null,
             expiresAt = nullableString(connection, "expiresAt"),

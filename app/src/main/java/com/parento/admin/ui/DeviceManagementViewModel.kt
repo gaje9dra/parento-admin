@@ -91,6 +91,10 @@ class DeviceManagementViewModel(
             _detailState.value = DeviceDetailUiState.Error("Enter a managed-device ID.")
             return
         }
+        if (runCatching { UUID.fromString(normalized) }.isFailure) {
+            _detailState.value = DeviceDetailUiState.Error("Enter a valid managed-device UUID.")
+            return
+        }
         selectedDeviceId = normalized
         _detailState.value = DeviceDetailUiState.Loading
         refreshDevice(normalized)

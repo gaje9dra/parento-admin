@@ -36,7 +36,10 @@ class EnrollmentViewModel(
             try {
                 operationMutex.withLock {
                     _uiState.value = EnrollmentUiState.Creating
-                    val startedAt = Instant.now()
+                    val baselineEnrollmentIds = when (val baseline = repository.list()) {
+                        is OperationResult.Success -> baseline.value.mapTo(mutableSetOf()) { it.id }
+                        is OperationResult.Failure -> null
+                    }
                     when (val result = repository.create()) {
                         is OperationResult.Success -> {
                             persistEnrollmentId(result.value.enrollment.id)
@@ -47,7 +50,7 @@ class EnrollmentViewModel(
                         }
                         is OperationResult.Failure -> {
                             if (result.error.isCreateOutcomeAmbiguous()) {
-                                reconcileCreateFailure(startedAt)
+                                reconcileCreateFailure(baselineEnrollmentIds)
                             } else {
                                 showFailure(result.error)
                             }
@@ -72,7 +75,7 @@ class EnrollmentViewModel(
             try {
                 operationMutex.withLock {
                     _uiState.value = EnrollmentUiState.Creating
-                    reconcileCreateFailure(Instant.EPOCH)
+                    reconcileCreateFailure(null)
                 }
             } finally {
                 operationInFlight = false
@@ -179,12 +182,12 @@ class EnrollmentViewModel(
         pollingJob = null
     }
 
-    private suspend fun reconcileCreateFailure(startedAt: Instant) {
+    private suspend fun reconcileCreateFailure(baselineEnrollmentIds: Set<String>?) {
         when (val result = repository.list()) {
             is OperationResult.Success -> {
                 val candidates = result.value
                     .filter { it.status.isActiveForAdmin() }
-                    .filter { startedAt == Instant.EPOCH || !it.createdAt.isBefore(startedAt.minusSeconds(RECONCILIATION_CLOCK_SKEW_SECONDS)) }
+                    .filter { baselineEnrollmentIds == null || it.id !in baselineEnrollmentIds }
                     .sortedByDescending { it.createdAt }
 
                 val enrollment = candidates.firstOrNull()
@@ -326,6 +329,5 @@ class EnrollmentViewModel(
         private const val ENROLLMENT_ID_KEY = "active_enrollment_id"
         private const val POLL_INTERVAL_MS = 5_000L
         private const val POLL_OPERATION_CHECK_MS = 50L
-        private const val RECONCILIATION_CLOCK_SKEW_SECONDS = 60L
     }
 }

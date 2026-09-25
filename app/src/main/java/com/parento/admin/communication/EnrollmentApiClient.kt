@@ -203,7 +203,8 @@ class EnrollmentApiClient(private val config: AppConfig) : EnrollmentApi {
     }
 
     private fun isValidUuid(value: String): Boolean =
-        runCatching { UUID.fromString(value) }.isSuccess
+        runCatching { UUID.fromString(value).toString().equals(value, ignoreCase = true) }
+            .getOrDefault(false)
 
     companion object {
         private const val CONNECT_TIMEOUT_MS = 10_000

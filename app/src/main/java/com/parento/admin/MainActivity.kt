@@ -223,10 +223,15 @@ class MainActivity : AppCompatActivity() {
                 EnrollmentScreen(frame, enrollmentViewModel).render(enrollmentViewModel.uiState.value)
             },
         )
-        if (enrollmentViewModel.uiState.value is com.parento.admin.ui.EnrollmentUiState.Restoring) {
-            enrollmentViewModel.refresh()
+        when (enrollmentViewModel.uiState.value) {
+            is com.parento.admin.ui.EnrollmentUiState.Restoring -> {
+                enrollmentViewModel.refresh()
+            }
+            is com.parento.admin.ui.EnrollmentUiState.Active -> {
+                enrollmentViewModel.startPolling()
+            }
+            else -> Unit
         }
-        enrollmentViewModel.startPolling()
     }
 
     private fun renderPlaceholder(titleRes: Int, messageRes: Int) {

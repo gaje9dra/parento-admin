@@ -26,6 +26,7 @@ data class DeviceMonitoring(
     val lastSuccessfulInitializationAt: String?,
     val lastSuccessfulCommunicationAt: String?,
     val lastMonitoringUpdateAt: String,
+    val serverReceivedAt: String? = null,
 )
 
 data class ManagedDeviceStatus(
@@ -34,6 +35,7 @@ data class ManagedDeviceStatus(
     val enrollmentState: EnrollmentState,
     val deviceStatus: DeviceStatus,
     val connectionState: ConnectionState,
+    val firstEnrolledAt: String? = null,
     val lastSeenAt: String?,
     val lastSeenAgeMs: Long?,
     val expiresAt: String?,

@@ -139,3 +139,22 @@ Local logout is authoritative for the device UI: backend logout is attempted whe
 The backend remains authoritative for administrator authorization and account status. The Admin app does not treat its local authentication state as proof of server-side authorization.
 
 No Admin-to-Managed direct communication, enrollment, device control, monitoring, or later-phase management functionality is introduced by Phase 3.2.
+
+
+## Phase 6.5 — Admin device communication integration
+
+The Admin app now consumes the Phase 6.4 backend contracts for:
+
+- completed enrollment references via `GET /api/v1/devices/enrollments`
+- authorized device status via `GET /api/v1/devices/{deviceId}/status`
+- authorized command creation via `POST /api/v1/devices/{deviceId}/commands`
+- authorized command retrieval via `GET /api/v1/devices/{deviceId}/commands/{commandId}`
+- command cancellation via `POST /api/v1/devices/{deviceId}/commands/{commandId}/cancel`
+
+The backend contract currently has no canonical managed-device list endpoint. Phase 6.5 therefore derives a bounded device reference list from completed enrollment records and then retrieves authoritative status for each device. A future canonical device-list endpoint can replace this source without changing the UI/domain boundary.
+
+The backend contract currently has no Admin-authenticated realtime status/event stream. The existing realtime endpoint is a managed-device session stream. The Admin app therefore does not create a second realtime transport and uses lifecycle-aware explicit status refresh instead.
+
+The command contract currently exposes only the neutral `FUTURE_COMMAND` type with an empty payload. No later-phase sensitive command is introduced by the Admin app.
+
+No backend or managed-app source is modified by Phase 6.5.

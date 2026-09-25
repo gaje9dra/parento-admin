@@ -4,6 +4,7 @@ import com.parento.admin.auth.AuthenticationRepository
 import com.parento.admin.auth.AuthenticationSession
 import com.parento.admin.config.AppConfig
 import com.parento.admin.device.AdminCommand
+import com.parento.admin.device.DeviceListPage
 import com.parento.admin.device.AdminCommandType
 import com.parento.admin.device.CommandStatus
 import com.parento.admin.device.DeviceMonitoring
@@ -40,6 +41,26 @@ class AdminBackendApiClient(
     override fun sendEvent(event: AdminEvent): OperationResult<Unit> =
         OperationResult.Failure(AdminError.Backend)
 
+    suspend fun listDevices(cursor: String? = null): OperationResult<DeviceListPage> {
+        val path = buildString {
+            append("/api/v1/devices?limit=50")
+            if (!cursor.isNullOrBlank()) append("&cursor=").append(java.net.URLEncoder.encode(cursor, "UTF-8"))
+        }
+        return execute("GET", path) { root ->
+            val data = root.getJSONObject("data")
+            val items = data.getJSONArray("items")
+            val devices = buildList {
+                for (i in 0 until items.length()) {
+                    add(parseDeviceListItem(items.getJSONObject(i)))
+                }
+            }
+            DeviceListPage(
+                devices = devices,
+                nextCursor = data.optString("nextCursor").takeIf { it.isNotBlank() && it != "null" },
+            )
+        }
+    }
+
     suspend fun listEnrollmentDevices(): OperationResult<List<EnrollmentDeviceReference>> =
         execute("GET", "/api/v1/devices/enrollments") { root ->
             val enrollments = root.getJSONObject("data").getJSONArray("enrollments")
@@ -54,6 +75,44 @@ class AdminBackendApiClient(
             }
             result.values.toList()
         }
+
+    private fun parseDeviceListItem(item: JSONObject): com.parento.admin.device.ManagedDeviceStatus {
+        val device = item.getJSONObject("device")
+        val connection = item.getJSONObject("connection")
+        val monitoring = item.getJSONObject("monitoring")
+        return ManagedDeviceStatus(
+            deviceId = device.getString("id"),
+            displayName = device.optString("name").ifBlank { device.optString("stableIdentifier").ifBlank { device.getString("id") } },
+            enrollmentState = enrollmentState(device.optString("enrollmentStatus")),
+            deviceStatus = deviceStatus(device.optString("operationalStatus")),
+            connectionState = connectionState(connection.optString("state")),
+            firstEnrolledAt = nullableString(device, "firstEnrolledAt"),
+            lastSeenAt = nullableString(connection, "lastSeenAt"),
+            lastSeenAgeMs = nullableLong(connection, "ageMs"),
+            expiresAt = nullableString(connection, "expiresAt"),
+            monitoringFreshness = freshness(monitoring.optString("freshness")),
+            monitoring = DeviceMonitoring(
+                androidVersion = nullableString(monitoring, "androidVersion") ?: "Unknown",
+                apiLevel = nullableInt(monitoring, "apiLevel") ?: 0,
+                appVersion = nullableString(monitoring, "appVersion") ?: "Unknown",
+                appVersionCode = 0,
+                managementMode = managementMode(monitoring.optString("managementMode")),
+                batteryPercentage = nullableInt(monitoring, "batteryPercentage"),
+                chargingState = nullableString(monitoring, "chargingState") ?: "UNKNOWN",
+                batteryStatus = "UNKNOWN",
+                networkState = nullableString(monitoring, "networkState") ?: "UNKNOWN",
+                storageTotalBytes = null,
+                storageAvailableBytes = nullableLong(monitoring, "storageAvailableBytes"),
+                storageUsedBytes = null,
+                memoryTotalBytes = null,
+                memoryAvailableBytes = nullableLong(monitoring, "memoryAvailableBytes"),
+                memoryLow = null,
+                lastSuccessfulInitializationAt = null,
+                lastSuccessfulCommunicationAt = null,
+                lastMonitoringUpdateAt = nullableString(monitoring, "lastTelemetryAt") ?: "",
+            ),
+        )
+    }
 
     suspend fun getDeviceStatus(deviceId: String): OperationResult<ManagedDeviceStatus> =
         execute("GET", "/api/v1/devices/" + deviceId + "/status") { root ->
@@ -176,6 +235,7 @@ class AdminBackendApiClient(
         lastSuccessfulInitializationAt = nullableString(json, "lastSuccessfulInitializationAt"),
         lastSuccessfulCommunicationAt = nullableString(json, "lastSuccessfulCommunicationAt"),
         lastMonitoringUpdateAt = json.optString("lastMonitoringUpdateAt", ""),
+        serverReceivedAt = nullableString(json, "serverReceivedAt"),
     )
 
     private fun parseCommand(json: JSONObject) = AdminCommand(
@@ -235,6 +295,10 @@ class AdminBackendApiClient(
     private fun freshness(value: String) = when (value) {
         "FRESH" -> MonitoringFreshness.CURRENT
         "STALE" -> MonitoringFreshness.STALE
+        "VERY_STALE" -> MonitoringFreshness.VERY_STALE
+        "NEVER_REPORTED" -> MonitoringFreshness.NEVER_REPORTED
+        "DISCONNECTED" -> MonitoringFreshness.DISCONNECTED
+        "REVOKED" -> MonitoringFreshness.REVOKED
         else -> MonitoringFreshness.UNKNOWN
     }
 

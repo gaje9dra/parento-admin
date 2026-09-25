@@ -69,7 +69,6 @@ class DeviceMonitoringScreen(
         })
         scroll.addView(content)
         root.addView(scroll)
-        viewModel.load()
     }
 
     private fun renderList(container: LinearLayout, devices: List<ManagedDeviceMonitoring>) {

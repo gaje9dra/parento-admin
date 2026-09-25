@@ -88,7 +88,7 @@ class AdminBackendApiClient(
             connectionState = connectionState(connection.optString("state")),
             firstEnrolledAt = nullableString(device, "firstEnrolledAt"),
             lastSeenAt = nullableString(connection, "lastSeenAt"),
-            lastSeenAgeMs = nullableLong(connection, "ageMs"),
+            lastSeenAgeMs = null,
             expiresAt = nullableString(connection, "expiresAt"),
             monitoringFreshness = freshness(monitoring.optString("freshness")),
             monitoring = DeviceMonitoring(

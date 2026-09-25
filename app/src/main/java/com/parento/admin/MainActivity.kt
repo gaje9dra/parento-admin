@@ -10,21 +10,27 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.google.android.gms.maps.MapView
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.textview.MaterialTextView
 import com.parento.admin.auth.AuthenticationState
+import com.parento.admin.location.DeviceLocationUseCase
 import com.parento.admin.navigation.AdminDestination
 import com.parento.admin.navigation.AdminNavigator
 import com.parento.admin.ui.AdminHomeScreen
 import com.parento.admin.ui.AdminHomeViewModel
 import com.parento.admin.ui.AdminLoginScreen
-import com.parento.admin.ui.AdminUiState
 import com.parento.admin.ui.AuthenticationViewModel
 import com.parento.admin.ui.AuthenticationViewModelFactory
+import com.parento.admin.ui.LocationScreen
+import com.parento.admin.ui.LocationViewModel
+import com.parento.admin.ui.LocationViewModelFactory
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private var hasCompletedInitialStart = false
+    private var selectedLocationDeviceId: String? = null
+    private var locationMapView: MapView? = null
 
     private val authViewModel: AuthenticationViewModel by lazy {
         ViewModelProvider(
@@ -89,6 +95,7 @@ class MainActivity : AppCompatActivity() {
                         navigator.currentDestination != AdminDestination.HOME
                     ) {
                         navigator.navigate(AdminDestination.HOME)
+                        selectedLocationDeviceId = null
                         renderAuthenticatedState()
                     } else {
                         isEnabled = false
@@ -101,11 +108,43 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
+        locationMapView?.onStart()
         if (hasCompletedInitialStart) {
             authViewModel.validateCurrentSession()
         } else {
             hasCompletedInitialStart = true
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        locationMapView?.onResume()
+    }
+
+    override fun onPause() {
+        locationMapView?.onPause()
+        super.onPause()
+    }
+
+    override fun onStop() {
+        locationMapView?.onStop()
+        super.onStop()
+    }
+
+    override fun onDestroy() {
+        locationMapView?.onDestroy()
+        locationMapView = null
+        super.onDestroy()
+    }
+
+    override fun onLowMemory() {
+        locationMapView?.onLowMemory()
+        super.onLowMemory()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        locationMapView?.onSaveInstanceState(outState)
+        super.onSaveInstanceState(outState)
     }
 
     private fun renderAuthenticationState(state: AuthenticationState) {
@@ -160,7 +199,8 @@ class MainActivity : AppCompatActivity() {
 
         contentRoot.removeAllViews()
         contentRoot.addView(FrameLayout(this).also { frame ->
-            AdminHomeScreen(frame, homeViewModel, admin) { target ->
+            AdminHomeScreen(frame, homeViewModel, admin) { target, deviceId ->
+                selectedLocationDeviceId = deviceId
                 navigator.navigate(target)
                 renderAuthenticatedDestination()
             }.render(homeViewModel.uiState.value)
@@ -183,6 +223,68 @@ class MainActivity : AppCompatActivity() {
                 R.string.nav_settings,
                 R.string.settings_placeholder,
             )
+            AdminDestination.LOCATION -> renderLocation()
+        }
+    }
+
+    private fun renderLocation() {
+        val deviceId = selectedLocationDeviceId
+        if (deviceId.isNullOrBlank()) {
+            renderPlaceholder(R.string.location_title, R.string.location_device_missing)
+            return
+        }
+
+        toolbar.title = getString(R.string.location_title)
+        val useCase = DeviceLocationUseCase(
+            (application as ParentoAdminApplication)
+                .appContainer.deviceLocationRepository,
+        )
+        val viewModel = ViewModelProvider(
+            this,
+            LocationViewModelFactory(deviceId, useCase),
+        ).get("location:$deviceId", LocationViewModel::class.java)
+
+        if (BuildConfig.PARENTO_MAPS_API_KEY.isNotBlank() && locationMapView == null) {
+            locationMapView = MapView(this).also { it.onCreate(null) }
+        }
+
+        contentRoot.addView(FrameLayout(this).also { frame ->
+            LocationScreen(
+                root = frame,
+                viewModel = viewModel,
+                mapView = locationMapView,
+                onBack = {
+                    navigator.navigate(AdminDestination.HOME)
+                    selectedLocationDeviceId = null
+                    renderAuthenticatedState()
+                },
+            ).render(viewModel.uiState.value)
+        })
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.uiState.collect { state ->
+                    if (navigator.currentDestination == AdminDestination.LOCATION) {
+                        contentRoot.removeAllViews()
+                        contentRoot.addView(FrameLayout(this@MainActivity).also { frame ->
+                            LocationScreen(
+                                root = frame,
+                                viewModel = viewModel,
+                                mapView = locationMapView,
+                                onBack = {
+                                    navigator.navigate(AdminDestination.HOME)
+                                    selectedLocationDeviceId = null
+                                    renderAuthenticatedState()
+                                },
+                            ).render(state)
+                        })
+                    }
+                }
+            }
+        }
+
+        if (viewModel.uiState.value is com.parento.admin.ui.LocationUiState.Loading) {
+            viewModel.load()
         }
     }
 

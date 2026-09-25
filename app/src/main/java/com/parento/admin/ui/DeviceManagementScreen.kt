@@ -184,6 +184,7 @@ class DeviceManagementScreen(
         ConnectionState.CONNECTED -> "Connected"
         ConnectionState.DISCONNECTED -> "Disconnected / recently seen"
         ConnectionState.CONNECTING -> "Connecting"
+        ConnectionState.RECONNECTING -> "Reconnecting"
         ConnectionState.ERROR -> "Unavailable"
     }
 

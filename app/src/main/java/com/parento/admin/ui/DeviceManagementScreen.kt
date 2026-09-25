@@ -72,7 +72,7 @@ class DeviceManagementScreen(
         column.addView(text("Managed device ID: " + status.deviceId))
         column.addView(text("Enrollment: " + status.enrollmentState.name))
         column.addView(text("Device status: " + status.deviceStatus.name))
-        column.addView(text("Management mode: " + (status.monitoring?.managementMode?.let(::MonitoringStatusLabels.management) ?: "Unknown")))
+        column.addView(text("Management mode: " + (status.monitoring?.managementMode?.let { MonitoringStatusLabels.management(it) } ?: "Unknown")))
         column.addView(statusIndicator("Communication", MonitoringStatusLabels.connection(status.connectionState)))
         column.addView(statusIndicator("Monitoring", MonitoringStatusLabels.freshness(status.monitoringFreshness)))
 

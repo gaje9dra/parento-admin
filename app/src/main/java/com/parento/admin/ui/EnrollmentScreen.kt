@@ -60,7 +60,7 @@ class EnrollmentScreen(
             addMessage(container, root.context.getString(R.string.enrollment_secret_warning))
             container.addView(TextView(root.context).apply {
                 text = secret
-                textIsSelectable = true
+                setTextIsSelectable(true)
                 contentDescription = root.context.getString(R.string.enrollment_secret_content_description)
                 textSize = 20f
                 setPadding(0, 16, 0, 16)

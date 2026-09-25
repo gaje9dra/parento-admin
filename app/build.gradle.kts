@@ -5,6 +5,9 @@ plugins {
     id("androidx.room")
 }
 
+val mapsApiKey = providers.gradleProperty("MAPS_API_KEY").orElse("").get()
+val escapedMapsApiKey = mapsApiKey.replace("\\", "\\\\").replace(""", "\\"")
+
 android {
     namespace = "com.parento.admin"
     compileSdk = 36
@@ -20,42 +23,39 @@ android {
         buildConfigField("boolean", "PARENTO_FEATURE_ENROLLMENT", "false")
         buildConfigField("boolean", "PARENTO_FEATURE_DEVICE_COMMUNICATION", "false")
         buildConfigField("boolean", "PARENTO_FEATURE_LOCATION", "true")
-        buildConfigField("String", "PARENTO_MAPS_API_KEY", "\"\"")
+        buildConfigField("String", "PARENTO_MAPS_API_KEY", ""$escapedMapsApiKey"")
         buildConfigField("boolean", "PARENTO_FEATURE_SCREEN_SHARING", "false")
         buildConfigField("boolean", "PARENTO_FEATURE_AUDIO", "false")
         buildConfigField("boolean", "PARENTO_FEATURE_APPLICATION_MANAGEMENT", "false")
         buildConfigField("boolean", "PARENTO_FEATURE_WEBSITE_FILTERING", "false")
         buildConfigField("boolean", "PARENTO_FEATURE_DEVICE_RESTRICTIONS", "false")
+
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     buildFeatures { buildConfig = true }
 
-    val mapsApiKey = providers.gradleProperty("MAPS_API_KEY").orElse("").get()
-    defaultConfig {
-        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
-    }
-
     buildTypes {
         getByName("debug") {
-            buildConfigField("String", "PARENTO_ENVIRONMENT", "\"development\"")
-            buildConfigField("String", "PARENTO_BACKEND_BASE_URL", "\"https://dev-backend.example.invalid\"")
-            buildConfigField("String", "PARENTO_LOG_LEVEL", "\"DEBUG\"")
+            buildConfigField("String", "PARENTO_ENVIRONMENT", ""development"")
+            buildConfigField("String", "PARENTO_BACKEND_BASE_URL", ""https://dev-backend.example.invalid"")
+            buildConfigField("String", "PARENTO_LOG_LEVEL", ""DEBUG"")
             buildConfigField("boolean", "PARENTO_LOGGING_ENABLED", "true")
             buildConfigField("boolean", "PARENTO_REQUIRE_HTTPS", "false")
             buildConfigField("boolean", "PARENTO_DEBUG_DIAGNOSTICS", "true")
         }
         create("verification") {
             initWith(getByName("debug"))
-            buildConfigField("String", "PARENTO_ENVIRONMENT", "\"test\"")
-            buildConfigField("String", "PARENTO_BACKEND_BASE_URL", "\"https://test-backend.example.invalid\"")
-            buildConfigField("String", "PARENTO_LOG_LEVEL", "\"INFO\"")
+            buildConfigField("String", "PARENTO_ENVIRONMENT", ""test"")
+            buildConfigField("String", "PARENTO_BACKEND_BASE_URL", ""https://test-backend.example.invalid"")
+            buildConfigField("String", "PARENTO_LOG_LEVEL", ""INFO"")
             buildConfigField("boolean", "PARENTO_DEBUG_DIAGNOSTICS", "false")
         }
         getByName("release") {
             isMinifyEnabled = false
-            buildConfigField("String", "PARENTO_ENVIRONMENT", "\"production\"")
-            buildConfigField("String", "PARENTO_BACKEND_BASE_URL", "\"https://backend.example.invalid\"")
-            buildConfigField("String", "PARENTO_LOG_LEVEL", "\"WARNING\"")
+            buildConfigField("String", "PARENTO_ENVIRONMENT", ""production"")
+            buildConfigField("String", "PARENTO_BACKEND_BASE_URL", ""https://backend.example.invalid"")
+            buildConfigField("String", "PARENTO_LOG_LEVEL", ""WARNING"")
             buildConfigField("boolean", "PARENTO_LOGGING_ENABLED", "true")
             buildConfigField("boolean", "PARENTO_REQUIRE_HTTPS", "true")
             buildConfigField("boolean", "PARENTO_DEBUG_DIAGNOSTICS", "false")

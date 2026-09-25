@@ -44,6 +44,7 @@ class EnrollmentScreen(
         when (state) {
             EnrollmentUiState.Ready -> addAction(content, R.string.create_enrollment) { viewModel.createEnrollment() }
             EnrollmentUiState.Creating -> addMessage(content, root.context.getString(R.string.enrollment_creating))
+            is EnrollmentUiState.Restoring -> addMessage(content, "Restoring enrollment status…")
             is EnrollmentUiState.Active -> renderActive(content, state)
             is EnrollmentUiState.Completed -> renderCompleted(content, state.enrollment)
             is EnrollmentUiState.Terminal -> renderTerminal(content, state.enrollment)

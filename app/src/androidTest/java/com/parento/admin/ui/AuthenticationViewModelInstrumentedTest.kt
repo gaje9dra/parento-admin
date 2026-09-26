@@ -1,13 +1,13 @@
-package com.parento.admin.ui
+package com.parento.testAdmin.ui
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.parento.admin.auth.AdminLoginCredentials
-import com.parento.admin.auth.AuthenticatedAdmin
-import com.parento.admin.auth.AuthenticationSession
-import com.parento.admin.auth.AuthenticationState
-import com.parento.admin.auth.AuthenticationRepository
-import com.parento.admin.domain.AdminError
-import com.parento.admin.domain.OperationResult
+import com.parento.testAdmin.auth.AdminLoginCredentials
+import com.parento.testAdmin.auth.AuthenticatedAdmin
+import com.parento.testAdmin.auth.AuthenticationSession
+import com.parento.testAdmin.auth.AuthenticationState
+import com.parento.testAdmin.auth.AuthenticationRepository
+import com.parento.testAdmin.domain.AdminError
+import com.parento.testAdmin.domain.OperationResult
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -15,27 +15,28 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
+private val testAdmin = AuthenticatedAdmin(
+    id = "testAdmin-1",
+    email = "testAdmin@example.com",
+    status = "ACTIVE",
+    lastAuthenticatedAt = null,
+)
+
 @RunWith(AndroidJUnit4::class)
-class AuthenticationViewModelInstrumentedTest {
-    private val admin = AuthenticatedAdmin(
-        id = "admin-1",
-        email = "admin@example.com",
-        status = "ACTIVE",
-        lastAuthenticatedAt = null,
-    )
+class AuthenticationViewModelInstrumentedTest
 
     @Test
     fun duplicateLoginSubmissionsProduceOneAuthenticationRequest() = runBlocking {
         val repository = FakeRepository(loginDelayMillis = 150)
         val viewModel = AuthenticationViewModel(repository)
 
-        viewModel.login("admin@example.com", "correct password")
-        viewModel.login("admin@example.com", "correct password")
+        viewModel.login("testAdmin@example.com", "correct password")
+        viewModel.login("testAdmin@example.com", "correct password")
 
         delay(350)
 
         assertEquals(1, repository.loginCalls)
-        assertEquals(AuthenticationState.Authenticated(admin), viewModel.state.value)
+        assertEquals(AuthenticationState.Authenticated(testAdmin), viewModel.state.value)
     }
 
     @Test
@@ -46,8 +47,8 @@ class AuthenticationViewModelInstrumentedTest {
         )
         val viewModel = AuthenticationViewModel(repository)
 
-        viewModel.login("admin@example.com", "correct password")
-        viewModel.login("admin@example.com", "correct password")
+        viewModel.login("testAdmin@example.com", "correct password")
+        viewModel.login("testAdmin@example.com", "correct password")
 
         delay(350)
 
@@ -67,7 +68,7 @@ class AuthenticationViewModelInstrumentedTest {
         )
         val viewModel = AuthenticationViewModel(repository)
 
-        viewModel.login("admin@example.com", "correct password")
+        viewModel.login("testAdmin@example.com", "correct password")
         delay(100)
         viewModel.logout()
         delay(100)
@@ -90,7 +91,7 @@ class AuthenticationViewModelInstrumentedTest {
     }
 
     private fun session() = AuthenticationSession(
-        admin = admin,
+        testAdmin = testAdmin,
         accessToken = "access-token-12345678901234567890",
         refreshToken = "refresh-token-12345678901234567890",
         accessTokenExpiresAtEpochMillis = System.currentTimeMillis() + 60_000,
@@ -101,7 +102,7 @@ class AuthenticationViewModelInstrumentedTest {
         private val loginDelayMillis: Long = 0,
         private val logoutResult: OperationResult<Unit> = OperationResult.Success(Unit),
         private val loginResult: OperationResult<AuthenticatedAdmin> =
-            OperationResult.Success(admin),
+            OperationResult.Success(testAdmin),
         private val restoreResult: OperationResult<AuthenticatedAdmin?> =
             OperationResult.Success(null),
     ) : AuthenticationRepository {
@@ -124,8 +125,8 @@ class AuthenticationViewModelInstrumentedTest {
         override suspend fun getCurrentAuthenticatedAdmin(): OperationResult<AuthenticatedAdmin> =
             OperationResult.Success(
                 AuthenticatedAdmin(
-                    id = "admin-1",
-                    email = "admin@example.com",
+                    id = "testAdmin-1",
+                    email = "testAdmin@example.com",
                     status = "ACTIVE",
                     lastAuthenticatedAt = null,
                 ),

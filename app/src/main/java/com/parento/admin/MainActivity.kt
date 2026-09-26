@@ -22,6 +22,9 @@ import com.parento.admin.ui.AdminHomeViewModel
 import com.parento.admin.ui.AdminLoginScreen
 import com.parento.admin.ui.AuthenticationViewModel
 import com.parento.admin.ui.AuthenticationViewModelFactory
+import com.parento.admin.ui.DeviceManagementScreen
+import com.parento.admin.ui.DeviceManagementViewModel
+import com.parento.admin.ui.DeviceManagementViewModelFactory
 import com.parento.admin.ui.LocationScreen
 import com.parento.admin.ui.LocationViewModel
 import com.parento.admin.ui.LocationViewModelFactory
@@ -32,18 +35,28 @@ class MainActivity : AppCompatActivity() {
     private var selectedLocationDeviceId: String? = null
     private var locationMapView: MapView? = null
 
+    private val appContainer
+        get() = (application as ParentoAdminApplication).appContainer
+
     private val authViewModel: AuthenticationViewModel by lazy {
         ViewModelProvider(
             this,
-            AuthenticationViewModelFactory(
-                (application as ParentoAdminApplication)
-                    .appContainer.authenticationRepository,
-            ),
+            AuthenticationViewModelFactory(appContainer.authenticationRepository),
         )[AuthenticationViewModel::class.java]
     }
 
     private val homeViewModel: AdminHomeViewModel by lazy {
         ViewModelProvider(this)[AdminHomeViewModel::class.java]
+    }
+
+    private val deviceViewModel: DeviceManagementViewModel by lazy {
+        ViewModelProvider(
+            this,
+            DeviceManagementViewModelFactory(
+                repository = appContainer.managedDeviceRepository,
+                onSessionExpired = { authViewModel.validateCurrentSession() },
+            ),
+        )[DeviceManagementViewModel::class.java]
     }
 
     private val navigator = AdminNavigator()
@@ -81,8 +94,26 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                authViewModel.state.collect { state ->
-                    renderAuthenticationState(state)
+                launch {
+                    authViewModel.state.collect { state ->
+                        renderAuthenticationState(state)
+                    }
+                }
+                launch {
+                    deviceViewModel.listState.collect {
+                        if (navigator.currentDestination == AdminDestination.DEVICES &&
+                            deviceViewModel.detailState.value is com.parento.admin.ui.DeviceDetailUiState.Idle
+                        ) {
+                            renderDeviceList()
+                        }
+                    }
+                }
+                launch {
+                    deviceViewModel.detailState.collect {
+                        if (navigator.currentDestination == AdminDestination.DEVICES) {
+                            renderDeviceDetailIfSelected()
+                        }
+                    }
                 }
             }
         }
@@ -91,6 +122,15 @@ class MainActivity : AppCompatActivity() {
             this,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
+                    if (authViewModel.state.value is AuthenticationState.Authenticated &&
+                        navigator.currentDestination == AdminDestination.DEVICES &&
+                        deviceViewModel.detailState.value !is com.parento.admin.ui.DeviceDetailUiState.Idle
+                    ) {
+                        deviceViewModel.clearSelection()
+                        renderDeviceList()
+                        return
+                    }
+
                     if (authViewModel.state.value is AuthenticationState.Authenticated &&
                         navigator.currentDestination != AdminDestination.HOME
                     ) {
@@ -157,6 +197,8 @@ class MainActivity : AppCompatActivity() {
             AuthenticationState.SessionExpired,
             AuthenticationState.SessionRevoked,
             AuthenticationState.AccountDisabled -> {
+                navigator.navigate(AdminDestination.HOME)
+                selectedLocationDeviceId = null
                 toolbar.title = getString(R.string.login_title)
                 contentRoot.removeAllViews()
                 contentRoot.addView(FrameLayout(this).also { frame ->
@@ -211,10 +253,13 @@ class MainActivity : AppCompatActivity() {
         contentRoot.removeAllViews()
         when (navigator.currentDestination) {
             AdminDestination.HOME -> renderAuthenticatedState()
-            AdminDestination.DEVICES -> renderPlaceholder(
-                R.string.nav_devices,
-                R.string.devices_placeholder,
-            )
+            AdminDestination.DEVICES -> {
+                toolbar.title = getString(R.string.nav_devices)
+                renderDeviceList()
+                if (deviceViewModel.listState.value is com.parento.admin.ui.DeviceListUiState.Loading) {
+                    deviceViewModel.loadDevices()
+                }
+            }
             AdminDestination.POLICIES -> renderPlaceholder(
                 R.string.nav_policies,
                 R.string.policies_placeholder,
@@ -227,6 +272,39 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun renderDeviceList() {
+        if (navigator.currentDestination != AdminDestination.DEVICES) return
+        toolbar.title = getString(R.string.nav_devices)
+        contentRoot.removeAllViews()
+        contentRoot.addView(FrameLayout(this).also { frame ->
+            DeviceManagementScreen(frame, deviceViewModel).renderList(
+                deviceViewModel.listState.value,
+            ) { deviceId ->
+                deviceViewModel.openDevice(deviceId)
+                renderDeviceDetailIfSelected()
+            }
+        })
+    }
+
+    private fun renderDeviceDetailIfSelected() {
+        if (navigator.currentDestination != AdminDestination.DEVICES) return
+        val state = deviceViewModel.detailState.value
+        if (state is com.parento.admin.ui.DeviceDetailUiState.Idle) {
+            renderDeviceList()
+            return
+        }
+        toolbar.title = getString(R.string.nav_devices)
+        contentRoot.removeAllViews()
+        contentRoot.addView(FrameLayout(this).also { frame ->
+            DeviceManagementScreen(frame, deviceViewModel).renderDetail(
+                state,
+            ) {
+                deviceViewModel.clearSelection()
+                renderDeviceList()
+            }
+        })
+    }
+
     private fun renderLocation() {
         val deviceId = selectedLocationDeviceId
         if (deviceId.isNullOrBlank()) {
@@ -235,10 +313,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         toolbar.title = getString(R.string.location_title)
-        val useCase = DeviceLocationUseCase(
-            (application as ParentoAdminApplication)
-                .appContainer.deviceLocationRepository,
-        )
+        val useCase = DeviceLocationUseCase(appContainer.deviceLocationRepository)
         val viewModel = ViewModelProvider(
             this,
             LocationViewModelFactory(deviceId, useCase),
@@ -277,7 +352,7 @@ class MainActivity : AppCompatActivity() {
                                     renderAuthenticatedState()
                                 },
                             ).render(state)
-                        })
+                        }
                     }
                 }
             }

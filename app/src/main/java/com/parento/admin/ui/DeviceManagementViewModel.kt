@@ -103,6 +103,11 @@ class DeviceManagementViewModel(
         refreshDevice(normalized)
     }
 
+    fun clearSelection() {
+        selectedDeviceId = null
+        _detailState.value = DeviceDetailUiState.Idle
+    }
+
     fun refreshSelectedDevice() {
         selectedDeviceId?.let { refreshDevice(it) }
     }

@@ -28,6 +28,7 @@ class NavigationTest {
                 AdminDestination.SETTINGS,
                 AdminDestination.LOCATION,
                 AdminDestination.SCREEN_SHARING,
+                AdminDestination.AUDIO_ACCESS,
             ),
             AdminDestination.entries,
         )

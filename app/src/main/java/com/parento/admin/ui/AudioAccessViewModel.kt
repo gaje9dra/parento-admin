@@ -4,9 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.parento.admin.audio.AudioAccessRepository
 import com.parento.admin.audio.AudioAccessSession
+import com.parento.admin.audio.AudioAccessSessionStatus
 import com.parento.admin.audio.AudioPlaybackController
 import com.parento.admin.audio.AudioPlaybackState
 import com.parento.admin.audio.AudioTransport
+import com.parento.admin.audio.AudioTransportContext
+import com.parento.admin.audio.AudioTransportState
 import com.parento.admin.audio.UnavailableAudioTransport
 import com.parento.admin.domain.AdminError
 import com.parento.admin.domain.ConnectionState
@@ -47,9 +50,21 @@ class AudioAccessViewModel(
     private var sessionId: String? = null
     private var pollJob: Job? = null
     private var operationBusy = false
+    private var playbackAttemptedSessionId: String? = null
 
     fun bindDevice(device: ManagedDeviceStatus) {
+        if (selectedDevice?.deviceId == device.deviceId) {
+            selectedDevice = device
+            return
+        }
+        pollJob?.cancel()
+        pollJob = null
+        viewModelScope.launch { stopLocalPlayback() }
         selectedDevice = device
+        sessionId = null
+        playbackAttemptedSessionId = null
+        operationBusy = false
+        _uiState.value = AudioAccessUiState.Idle
     }
 
     fun clearDevice() {
@@ -58,6 +73,8 @@ class AudioAccessViewModel(
         viewModelScope.launch { stopLocalPlayback() }
         selectedDevice = null
         sessionId = null
+        playbackAttemptedSessionId = null
+        operationBusy = false
         _uiState.value = AudioAccessUiState.Idle
     }
 
@@ -68,15 +85,27 @@ class AudioAccessViewModel(
             _uiState.value = AudioAccessUiState.Error(it, canRetry = false)
             return
         }
+
         operationBusy = true
         _uiState.value = AudioAccessUiState.Loading
         viewModelScope.launch {
             when (val result = repository.createSession(device.deviceId, UUID.randomUUID().toString())) {
                 is OperationResult.Success -> {
                     operationBusy = false
-                    sessionId = result.value.sessionId
-                    _uiState.value = AudioAccessUiState.Session(result.value, AudioPlaybackState.IDLE)
-                    startPolling()
+                    val session = result.value
+                    if (session.managedDeviceId != device.deviceId || session.sessionId.isBlank()) {
+                        handleFailure(AdminError.Authorization)
+                        return@launch
+                    }
+                    sessionId = session.sessionId
+                    playbackAttemptedSessionId = null
+                    _uiState.value = AudioAccessUiState.Session(session, AudioPlaybackState.IDLE)
+                    if (session.status.isTerminal) {
+                        applySession(session)
+                    } else {
+                        startPolling()
+                        applySession(session)
+                    }
                 }
                 is OperationResult.Failure -> {
                     operationBusy = false
@@ -89,10 +118,12 @@ class AudioAccessViewModel(
     fun stop() {
         val id = sessionId ?: return
         val current = (_uiState.value as? AudioAccessUiState.Session)?.value ?: return
-        if (operationBusy || current.status.isTerminal) {
+        if (current.status.isTerminal) {
             viewModelScope.launch { stopLocalPlayback() }
             return
         }
+        if (operationBusy) return
+
         operationBusy = true
         _uiState.value = AudioAccessUiState.Session(current, AudioPlaybackState.STOPPING)
         viewModelScope.launch {
@@ -100,8 +131,7 @@ class AudioAccessViewModel(
             when (val result = repository.stopSession(id)) {
                 is OperationResult.Success -> {
                     operationBusy = false
-                    _uiState.value = AudioAccessUiState.Session(result.value, AudioPlaybackState.IDLE)
-                    if (result.value.status.isTerminal) pollJob?.cancel()
+                    applySession(result.value)
                 }
                 is OperationResult.Failure -> {
                     operationBusy = false
@@ -122,9 +152,16 @@ class AudioAccessViewModel(
         }
     }
 
+    fun retry() {
+        val state = _uiState.value
+        if (state !is AudioAccessUiState.Error || !state.canRetry) return
+        start()
+    }
+
     fun onBackground() {
         pollJob?.cancel()
         pollJob = null
+        playbackAttemptedSessionId = null
         viewModelScope.launch { stopLocalPlayback() }
     }
 
@@ -151,54 +188,97 @@ class AudioAccessViewModel(
         viewModelScope.launch { stopLocalPlayback() }
         sessionId = null
         selectedDevice = null
+        playbackAttemptedSessionId = null
+        operationBusy = false
         _uiState.value = AudioAccessUiState.Idle
     }
 
     private fun applySession(session: AudioAccessSession) {
-        if (isExpired(session)) {
+        val expectedDeviceId = selectedDevice?.deviceId
+        val expectedSessionId = sessionId
+        if (expectedDeviceId == null || expectedSessionId == null ||
+            session.managedDeviceId != expectedDeviceId || session.sessionId != expectedSessionId
+        ) {
             pollJob?.cancel()
             viewModelScope.launch { stopLocalPlayback() }
-            _uiState.value = AudioAccessUiState.Session(session.copy(), AudioPlaybackState.IDLE)
-            onSessionExpired()
+            _uiState.value = AudioAccessUiState.Error(
+                "The audio session no longer matches the selected device.",
+                canRetry = false,
+            )
             return
         }
 
+        val authoritativeSession = if (isExpired(session) && !session.status.isTerminal) {
+            session.copy(
+                status = AudioAccessSessionStatus.EXPIRED,
+                terminationReason = session.terminationReason ?: "EXPIRED",
+            )
+        } else {
+            session
+        }
+
         when {
-            session.status == com.parento.admin.audio.AudioAccessSessionStatus.ACTIVE &&
-                session.transportState["state"]?.uppercase() == "ACTIVE" -> {
-                if (transport.state != AudioPlaybackState.PLAYING) {
-                    viewModelScope.launch { connectPlayback(session) }
+            authoritativeSession.status.isTerminal -> {
+                pollJob?.cancel()
+                viewModelScope.launch { stopLocalPlayback() }
+                _uiState.value = AudioAccessUiState.Session(
+                    authoritativeSession,
+                    AudioPlaybackState.IDLE,
+                )
+            }
+
+            authoritativeSession.status == AudioAccessSessionStatus.ACTIVE &&
+                authoritativeSession.transportState == AudioTransportState.ACTIVE -> {
+                if (playbackAttemptedSessionId != authoritativeSession.sessionId) {
+                    playbackAttemptedSessionId = authoritativeSession.sessionId
+                    viewModelScope.launch { connectPlayback(authoritativeSession) }
+                } else if (transport.state == AudioPlaybackState.PLAYING) {
+                    _uiState.value = AudioAccessUiState.Session(
+                        authoritativeSession,
+                        AudioPlaybackState.PLAYING,
+                    )
                 } else {
-                    _uiState.value = AudioAccessUiState.Session(session, AudioPlaybackState.PLAYING)
+                    _uiState.value = AudioAccessUiState.Session(
+                        authoritativeSession,
+                        AudioPlaybackState.ERROR,
+                    )
                 }
             }
-            session.status.isTerminal -> {
+
+            else -> {
                 viewModelScope.launch { stopLocalPlayback() }
-                _uiState.value = AudioAccessUiState.Session(session, AudioPlaybackState.IDLE)
-                pollJob?.cancel()
+                _uiState.value = AudioAccessUiState.Session(
+                    authoritativeSession,
+                    AudioPlaybackState.IDLE,
+                )
             }
-            else -> _uiState.value = AudioAccessUiState.Session(session, AudioPlaybackState.IDLE)
         }
     }
 
     private suspend fun connectPlayback(session: AudioAccessSession) {
         _uiState.value = AudioAccessUiState.Session(session, AudioPlaybackState.CONNECTING)
         val result = transport.connect(
-            managedDeviceId = session.managedDeviceId,
-            audioSessionId = session.sessionId,
+            context = AudioTransportContext(
+                managedDeviceId = session.managedDeviceId,
+                audioSessionId = session.sessionId,
+            ),
             transportState = session.transportState,
         )
         when (result) {
             is OperationResult.Success -> when (val playbackResult = playback.start(transport)) {
                 is OperationResult.Success ->
                     _uiState.value = AudioAccessUiState.Session(session, AudioPlaybackState.PLAYING)
+
                 is OperationResult.Failure -> {
-                    transport.disconnect()
+                    playback.stop(transport)
                     _uiState.value = AudioAccessUiState.Session(session, AudioPlaybackState.ERROR)
                 }
             }
-            is OperationResult.Failure ->
+
+            is OperationResult.Failure -> {
+                transport.disconnect()
                 _uiState.value = AudioAccessUiState.Session(session, AudioPlaybackState.ERROR)
+            }
         }
     }
 
@@ -215,11 +295,27 @@ class AudioAccessViewModel(
                 when (val result = repository.getSession(id)) {
                     is OperationResult.Success -> applySession(result.value)
                     is OperationResult.Failure -> {
-                        if (result.error is AdminError.SessionExpired || result.error is AdminError.SessionRevoked) {
+                        if (result.error is AdminError.SessionExpired) {
+                            stopForAuthorizationFailure()
                             onSessionExpired()
                             break
                         }
-                        _uiState.value = AudioAccessUiState.Error(messageFor(result.error))
+                        if (result.error is AdminError.SessionRevoked) {
+                            stopForAuthorizationFailure()
+                            onSessionExpired()
+                            break
+                        }
+                        if (result.error is AdminError.ResourceGone) {
+                            markExpiredFromFailure()
+                            break
+                        }
+                        viewModelScope.launch { stopLocalPlayback() }
+                        _uiState.value = AudioAccessUiState.Error(
+                            messageFor(result.error),
+                            canRetry = result.error is AdminError.Network ||
+                                result.error is AdminError.Timeout ||
+                                result.error is AdminError.RateLimited,
+                        )
                         break
                     }
                 }
@@ -228,9 +324,11 @@ class AudioAccessViewModel(
     }
 
     private fun validateDevice(device: ManagedDeviceStatus): String? {
-        if (device.enrollmentState != EnrollmentState.ENROLLED) return "Audio access requires an enrolled device."
         if (device.enrollmentState == EnrollmentState.REVOKED || device.deviceStatus == DeviceStatus.REVOKED) {
             return "This managed device has been revoked."
+        }
+        if (device.enrollmentState != EnrollmentState.ENROLLED) {
+            return "Audio access requires an enrolled device."
         }
         if (device.connectionState != ConnectionState.CONNECTED) {
             return "The managed device must have an active communication session."
@@ -242,14 +340,59 @@ class AudioAccessViewModel(
     }
 
     private fun isExpired(session: AudioAccessSession): Boolean =
-        runCatching { Instant.parse(session.expiresAt).toEpochMilli() <= nowEpochMillis() }.getOrDefault(false)
+        runCatching {
+            Instant.parse(session.expiresAt).toEpochMilli() <= nowEpochMillis()
+        }.getOrDefault(false)
+
+    private fun stopForAuthorizationFailure() {
+        pollJob?.cancel()
+        pollJob = null
+        viewModelScope.launch { stopLocalPlayback() }
+        _uiState.value = AudioAccessUiState.Error(
+            "Audio access authorization is no longer valid.",
+            canRetry = false,
+        )
+    }
+
+    private fun markExpiredFromFailure() {
+        val current = (_uiState.value as? AudioAccessUiState.Session)?.value ?: return
+        pollJob?.cancel()
+        viewModelScope.launch { stopLocalPlayback() }
+        _uiState.value = AudioAccessUiState.Session(
+            current.copy(
+                status = AudioAccessSessionStatus.EXPIRED,
+                terminationReason = current.terminationReason ?: "EXPIRED",
+            ),
+            AudioPlaybackState.IDLE,
+        )
+    }
 
     private fun handleFailure(error: AdminError) {
-        if (error is AdminError.SessionExpired || error is AdminError.SessionRevoked) {
-            onSessionExpired()
-            return
+        when (error) {
+            AdminError.SessionExpired,
+            AdminError.SessionRevoked -> {
+                stopForAuthorizationFailure()
+                onSessionExpired()
+            }
+
+            AdminError.Authorization -> {
+                stopForAuthorizationFailure()
+            }
+
+            AdminError.ResourceGone -> {
+                markExpiredFromFailure()
+            }
+
+            else -> {
+                viewModelScope.launch { stopLocalPlayback() }
+                _uiState.value = AudioAccessUiState.Error(
+                    messageFor(error),
+                    canRetry = error is AdminError.Network ||
+                        error is AdminError.Timeout ||
+                        error is AdminError.RateLimited,
+                )
+            }
         }
-        _uiState.value = AudioAccessUiState.Error(messageFor(error))
     }
 
     private fun messageFor(error: AdminError): String = when (error) {
@@ -257,9 +400,13 @@ class AudioAccessViewModel(
         AdminError.Network -> "Network connection unavailable."
         AdminError.Timeout -> "The audio-access request timed out."
         AdminError.InvalidState -> "Audio access is not available in the current session state."
+        AdminError.RateLimited -> "Too many audio-access requests. Please wait and try again."
+        AdminError.ResourceGone -> "This audio session is no longer available."
         is AdminError.DeviceNotFound -> "The managed device was not found."
         AdminError.ServerUnavailable -> "The Parento server is temporarily unavailable."
         AdminError.Validation -> "The audio-access request was rejected as invalid."
+        AdminError.SessionExpired -> "Your administrator session has expired."
+        AdminError.SessionRevoked -> "Your administrator session is no longer valid."
         else -> "Audio access is currently unavailable."
     }
 

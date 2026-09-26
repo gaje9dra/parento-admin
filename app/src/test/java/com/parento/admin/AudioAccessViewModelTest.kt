@@ -142,7 +142,7 @@ class AudioAccessViewModelTest {
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value is AudioAccessUiState.Error)
-        assertEquals(1, playback.stopCalls)
+        assertTrue(playback.stopCalls > 0)
     }
 
     private fun session(

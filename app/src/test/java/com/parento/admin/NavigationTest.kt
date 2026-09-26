@@ -26,6 +26,8 @@ class NavigationTest {
                 AdminDestination.DEVICES,
                 AdminDestination.POLICIES,
                 AdminDestination.SETTINGS,
+                AdminDestination.LOCATION,
+                AdminDestination.SCREEN_SHARING,
             ),
             AdminDestination.entries,
         )

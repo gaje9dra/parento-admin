@@ -408,7 +408,7 @@ class MainActivity : AppCompatActivity() {
                                     renderAuthenticatedState()
                                 },
                             ).render(state)
-                        }
+                        })
                     }
                 }
             }

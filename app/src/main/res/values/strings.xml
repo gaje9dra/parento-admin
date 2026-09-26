@@ -47,4 +47,23 @@
     <string name="location_open_device">Open location: %1$s</string>
     <string name="location_back">Back to devices</string>
     <string name="screen_sharing_title">Screen sharing</string>
+    <string name="enrollment_title">Enroll managed device</string>
+    <string name="enrollment_subtitle">Create and securely complete a managed-device enrollment.</string>
+    <string name="create_enrollment">Create enrollment</string>
+    <string name="enrollment_creating">Creating enrollment…</string>
+    <string name="enrollment_waiting">Waiting for the managed device to complete enrollment.</string>
+    <string name="enrollment_expires">Expires: %1$s</string>
+    <string name="enrollment_secret_warning">Keep this authorization code private.</string>
+    <string name="enrollment_secret_content_description">Enrollment authorization code</string>
+    <string name="copy_enrollment_code">Copy enrollment code</string>
+    <string name="refresh_enrollment">Refresh enrollment</string>
+    <string name="cancel_enrollment">Cancel enrollment</string>
+    <string name="enrollment_completed">Enrollment completed successfully.</string>
+    <string name="managed_device_id">Managed device ID: %1$s</string>
+    <string name="enrollment_status">Enrollment status: %1$s</string>
+    <string name="enrollment_expired">This enrollment has expired.</string>
+    <string name="enrollment_cancelled">This enrollment was cancelled.</string>
+    <string name="enrollment_revoked">This enrollment was revoked.</string>
+    <string name="enrollment_failed">This enrollment failed.</string>
+    <string name="enrollment_terminal">This enrollment is no longer active.</string>
 </resources>

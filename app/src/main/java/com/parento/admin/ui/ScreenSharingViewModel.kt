@@ -113,6 +113,15 @@ class ScreenSharingViewModel(
         }
     }
 
+    fun onBackground() {
+        pollJob?.cancel()
+        pollJob = null
+    }
+
+    fun onForeground() {
+        if (sessionId != null) reconcile()
+    }
+
     fun reconcile() {
         val id = sessionId ?: return
         viewModelScope.launch {

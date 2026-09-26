@@ -154,14 +154,18 @@ class AdminBackendApiClient(
     suspend fun createAudioAccessSession(
         deviceId: String,
         correlationId: String,
-    ): OperationResult<AudioAccessSession> =
-        execute(
+    ): OperationResult<AudioAccessSession> {
+        if (deviceId.isBlank() || correlationId.isBlank()) {
+            return OperationResult.Failure(AdminError.Validation)
+        }
+        return execute(
             "POST",
-            "/api/v1/devices/" + deviceId + "/audio-sessions",
+            "/api/v1/devices/" + encodePathSegment(deviceId) + "/audio-sessions",
             JSONObject().apply { put("correlationId", correlationId) }.toString(),
         ) { root ->
             parseAudioAccessSession(root.getJSONObject("data").getJSONObject("session"))
         }
+    }
 
     suspend fun getAudioAccessSession(
         sessionId: String,

@@ -101,14 +101,7 @@ class AuthenticationViewModelInstrumentedTest {
         private val loginDelayMillis: Long = 0,
         private val logoutResult: OperationResult<Unit> = OperationResult.Success(Unit),
         private val loginResult: OperationResult<AuthenticatedAdmin> =
-            OperationResult.Success(
-                AuthenticatedAdmin(
-                    id = "admin-1",
-                    email = "admin@example.com",
-                    status = "ACTIVE",
-                    lastAuthenticatedAt = null,
-                ),
-            ),
+            OperationResult.Success(admin),
         private val restoreResult: OperationResult<AuthenticatedAdmin?> =
             OperationResult.Success(null),
     ) : AuthenticationRepository {

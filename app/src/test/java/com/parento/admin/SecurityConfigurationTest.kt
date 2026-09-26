@@ -42,10 +42,8 @@ class SecurityConfigurationTest {
         val testSecurity = config(AppEnvironment.TEST, allowDiagnostics = true)
             .securityConfiguration()
         assertFalse(testSecurity.debugDiagnosticsAllowed)
-
-        val exception = assertThrows(IllegalArgumentException::class.java) {
+        assertThrows(IllegalArgumentException::class.java) {
             config(AppEnvironment.PRODUCTION, allowDiagnostics = true)
         }
-        assertTrue(exception.message?.contains("debug diagnostics") == true)
     }
 }

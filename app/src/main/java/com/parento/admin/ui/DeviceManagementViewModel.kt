@@ -103,6 +103,9 @@ class DeviceManagementViewModel(
         refreshDevice(normalized)
     }
 
+    fun currentSelectedDeviceStatus(): ManagedDeviceStatus? =
+        (_detailState.value as? DeviceDetailUiState.Content)?.status
+
     fun clearSelection() {
         selectedDeviceId = null
         _detailState.value = DeviceDetailUiState.Idle

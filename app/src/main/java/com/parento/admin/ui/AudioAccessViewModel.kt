@@ -184,7 +184,6 @@ class AudioAccessViewModel(
     private suspend fun connectPlayback(session: AudioAccessSession) {
         _uiState.value = AudioAccessUiState.Session(session, AudioPlaybackState.CONNECTING)
         val result = transport.connect(
-            adminSessionBinding = session.adminBinding(),
             managedDeviceId = session.managedDeviceId,
             audioSessionId = session.sessionId,
             transportState = session.transportState,
@@ -263,9 +262,6 @@ class AudioAccessViewModel(
         AdminError.Validation -> "The audio-access request was rejected as invalid."
         else -> "Audio access is currently unavailable."
     }
-
-    private fun AudioAccessSession.adminBinding(): String =
-        correlationId
 
     override fun onCleared() {
         pollJob?.cancel()

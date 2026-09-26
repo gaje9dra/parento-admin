@@ -28,12 +28,25 @@ import com.parento.admin.ui.DeviceManagementViewModelFactory
 import com.parento.admin.ui.LocationScreen
 import com.parento.admin.ui.LocationViewModel
 import com.parento.admin.ui.LocationViewModelFactory
+import com.parento.admin.ui.ScreenSharingScreen
+import com.parento.admin.ui.ScreenSharingViewModel
+import com.parento.admin.ui.ScreenSharingViewModelFactory
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private var hasCompletedInitialStart = false
     private var selectedLocationDeviceId: String? = null
     private var locationMapView: MapView? = null
+
+    private val screenSharingViewModel: ScreenSharingViewModel by lazy {
+        ViewModelProvider(
+            this,
+            ScreenSharingViewModelFactory(
+                repository = appContainer.screenSharingRepository,
+                onSessionExpired = { authViewModel.validateCurrentSession() },
+            ),
+        )[ScreenSharingViewModel::class.java]
+    }
 
     private val appContainer
         get() = (application as ParentoAdminApplication).appContainer
@@ -109,6 +122,13 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 launch {
+                    screenSharingViewModel.uiState.collect {
+                        if (navigator.currentDestination == AdminDestination.SCREEN_SHARING) {
+                            renderScreenSharing()
+                        }
+                    }
+                }
+                launch {
                     deviceViewModel.detailState.collect {
                         if (navigator.currentDestination == AdminDestination.DEVICES) {
                             renderDeviceDetailIfSelected()
@@ -122,6 +142,15 @@ class MainActivity : AppCompatActivity() {
             this,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
+                    if (authViewModel.state.value is AuthenticationState.Authenticated &&
+                        navigator.currentDestination == AdminDestination.SCREEN_SHARING
+                    ) {
+                        navigator.navigate(AdminDestination.DEVICES)
+                        screenSharingViewModel.clearDevice()
+                        renderDeviceDetailIfSelected()
+                        return
+                    }
+
                     if (authViewModel.state.value is AuthenticationState.Authenticated &&
                         navigator.currentDestination == AdminDestination.DEVICES &&
                         deviceViewModel.detailState.value !is com.parento.admin.ui.DeviceDetailUiState.Idle
@@ -199,6 +228,7 @@ class MainActivity : AppCompatActivity() {
             AuthenticationState.AccountDisabled -> {
                 navigator.navigate(AdminDestination.HOME)
                 selectedLocationDeviceId = null
+                screenSharingViewModel.clearDevice()
                 toolbar.title = getString(R.string.login_title)
                 contentRoot.removeAllViews()
                 contentRoot.addView(FrameLayout(this).also { frame ->
@@ -269,6 +299,7 @@ class MainActivity : AppCompatActivity() {
                 R.string.settings_placeholder,
             )
             AdminDestination.LOCATION -> renderLocation()
+            AdminDestination.SCREEN_SHARING -> renderScreenSharing()
         }
     }
 
@@ -302,6 +333,22 @@ class MainActivity : AppCompatActivity() {
                 deviceViewModel.clearSelection()
                 renderDeviceList()
             }
+        })
+    }
+
+    private fun renderScreenSharing() {
+        if (navigator.currentDestination != AdminDestination.SCREEN_SHARING) return
+        toolbar.title = getString(R.string.screen_sharing_title)
+        contentRoot.removeAllViews()
+        contentRoot.addView(FrameLayout(this).also { frame ->
+            ScreenSharingScreen(
+                root = frame,
+                viewModel = screenSharingViewModel,
+                onBack = {
+                    navigator.navigate(AdminDestination.DEVICES)
+                    renderDeviceDetailIfSelected()
+                },
+            ).render(screenSharingViewModel.uiState.value)
         })
     }
 

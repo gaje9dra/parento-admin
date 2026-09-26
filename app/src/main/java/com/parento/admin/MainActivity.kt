@@ -391,7 +391,6 @@ class MainActivity : AppCompatActivity() {
             AudioAccessScreen(
                 root = frame,
                 viewModel = audioAccessViewModel,
-                device = deviceViewModel.currentSelectedDeviceStatus(),
             ).render(audioAccessViewModel.uiState.value, deviceViewModel.currentSelectedDeviceStatus())
         })
     }

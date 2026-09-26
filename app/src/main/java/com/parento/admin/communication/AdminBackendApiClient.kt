@@ -18,6 +18,9 @@ import com.parento.admin.domain.DeviceStatus
 import com.parento.admin.domain.EnrollmentState
 import com.parento.admin.domain.OperationResult
 import com.parento.admin.security.SessionStore
+import com.parento.admin.screensharing.ScreenSharingSession
+import com.parento.admin.screensharing.ScreenSharingSessionStatus
+import com.parento.admin.screensharing.ScreenTransportState
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -117,6 +120,32 @@ class AdminBackendApiClient(
     suspend fun getDeviceStatus(deviceId: String): OperationResult<ManagedDeviceStatus> =
         execute("GET", "/api/v1/devices/" + deviceId + "/status") { root ->
             parseDeviceStatus(root.getJSONObject("data"))
+        }
+
+    suspend fun createScreenSharingSession(
+        deviceId: String,
+        correlationId: String,
+    ): OperationResult<ScreenSharingSession> =
+        execute(
+            "POST",
+            "/api/v1/devices/" + deviceId + "/screen-sessions",
+            JSONObject().apply { put("correlationId", correlationId) }.toString(),
+        ) { root ->
+            parseScreenSharingSession(root.getJSONObject("data").getJSONObject("session"))
+        }
+
+    suspend fun getScreenSharingSession(
+        sessionId: String,
+    ): OperationResult<ScreenSharingSession> =
+        execute("GET", "/api/v1/screen-sessions/" + sessionId) { root ->
+            parseScreenSharingSession(root.getJSONObject("data").getJSONObject("session"))
+        }
+
+    suspend fun stopScreenSharingSession(
+        sessionId: String,
+    ): OperationResult<ScreenSharingSession> =
+        execute("POST", "/api/v1/screen-sessions/" + sessionId + "/stop") { root ->
+            parseScreenSharingSession(root.getJSONObject("data").getJSONObject("session"))
         }
 
     suspend fun createFutureCommand(deviceId: String, idempotencyKey: String): OperationResult<AdminCommand> =
@@ -237,6 +266,35 @@ class AdminBackendApiClient(
         lastMonitoringUpdateAt = json.optString("lastMonitoringUpdateAt", ""),
         serverReceivedAt = nullableString(json, "serverReceivedAt"),
     )
+
+    private fun parseScreenSharingSession(json: JSONObject): ScreenSharingSession {
+        val transport = json.optJSONObject("transportState")
+        val details = linkedMapOf<String, String>()
+        transport?.keys()?.forEach { key ->
+            if (!transport.isNull(key)) details[key] = transport.optString(key)
+        }
+        return ScreenSharingSession(
+            sessionId = json.getString("sessionId"),
+            managedDeviceId = json.getString("deviceId"),
+            status = ScreenSharingSessionStatus.valueOf(json.getString("status")),
+            createdAt = json.getString("createdAt"),
+            authorizedAt = nullableString(json, "authorizedAt"),
+            startedAt = nullableString(json, "startedAt"),
+            expiresAt = json.getString("expiresAt"),
+            stoppedAt = nullableString(json, "stoppedAt"),
+            lastActivityAt = json.getString("lastActivityAt"),
+            terminationReason = nullableString(json, "terminationReason"),
+            correlationId = json.getString("correlationId"),
+            transportState = when (transport?.optString("state")?.uppercase()) {
+                "CONNECTED", "ACTIVE" -> ScreenTransportState.CONNECTED
+                "CONNECTING", "STARTING" -> ScreenTransportState.CONNECTING
+                "DISCONNECTED" -> ScreenTransportState.DISCONNECTED
+                "ERROR", "FAILED" -> ScreenTransportState.ERROR
+                else -> ScreenTransportState.UNAVAILABLE
+            },
+            transportStateDetails = details,
+        )
+    }
 
     private fun parseCommand(json: JSONObject) = AdminCommand(
         id = json.getString("id"),

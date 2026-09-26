@@ -29,7 +29,6 @@ class UnavailableAudioTransport : AudioTransport {
         private set
 
     override suspend fun connect(
-        adminSessionBinding: String,
         managedDeviceId: String,
         audioSessionId: String,
         transportState: Map<String, String>,

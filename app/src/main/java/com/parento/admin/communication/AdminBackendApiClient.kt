@@ -23,6 +23,7 @@ import com.parento.admin.screensharing.ScreenSharingSessionStatus
 import com.parento.admin.screensharing.ScreenTransportState
 import com.parento.admin.audio.AudioAccessSession
 import com.parento.admin.audio.AudioAccessSessionStatus
+import com.parento.admin.audio.AudioTransportState
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -164,8 +165,9 @@ class AdminBackendApiClient(
 
     suspend fun getAudioAccessSession(
         sessionId: String,
-    ): OperationResult<AudioAccessSession> =
-        execute("GET", "/api/v1/audio-sessions/" + sessionId) { root ->
+    ): OperationResult<AudioAccessSession> {
+        if (sessionId.isBlank()) return OperationResult.Failure(AdminError.Validation)
+        return execute("GET", "/api/v1/audio-sessions/" + encodePathSegment(sessionId)) { root ->
             parseAudioAccessSession(root.getJSONObject("data").getJSONObject("session"))
         }
 
@@ -326,12 +328,12 @@ class AdminBackendApiClient(
 
     private fun parseAudioAccessSession(json: JSONObject): AudioAccessSession {
         val transport = json.optJSONObject("transportState")
-        val details = linkedMapOf<String, String>()
-        transport?.keys()?.forEach { key ->
-            if (!transport.isNull(key)) {
-                val value = transport.optString(key)
-                if (value.length <= 128) details[key] = value
-            }
+        val transportState = when (transport?.optString("state")?.uppercase()) {
+            "CONNECTING", "STARTING" -> AudioTransportState.CONNECTING
+            "ACTIVE", "CONNECTED" -> AudioTransportState.ACTIVE
+            "DISCONNECTED", "STOPPING", "STOPPED" -> AudioTransportState.DISCONNECTED
+            "ERROR", "FAILED" -> AudioTransportState.ERROR
+            else -> AudioTransportState.UNAVAILABLE
         }
         return AudioAccessSession(
             sessionId = json.getString("sessionId"),
@@ -345,7 +347,7 @@ class AdminBackendApiClient(
             lastActivityAt = json.getString("lastActivityAt"),
             terminationReason = nullableString(json, "terminationReason"),
             correlationId = json.getString("correlationId"),
-            transportState = details,
+            transportState = transportState,
         )
     }
 
@@ -377,6 +379,8 @@ class AdminBackendApiClient(
             status == 404 && code == "DEVICE_NOT_FOUND" -> AdminError.DeviceNotFound("")
             status == 404 -> AdminError.Backend
             status == 409 -> AdminError.InvalidState
+            status == 410 -> AdminError.ResourceGone
+            status == 429 -> AdminError.RateLimited
             status >= 500 -> AdminError.ServerUnavailable
             status == 400 -> AdminError.Validation
             else -> AdminError.Backend
@@ -419,6 +423,9 @@ class AdminBackendApiClient(
         "NOT_MANAGED" -> ManagementMode.UNMANAGED
         else -> ManagementMode.UNKNOWN
     }
+
+    private fun encodePathSegment(value: String): String =
+        java.net.URLEncoder.encode(value, "UTF-8").replace("+", "%20")
 
     private fun nullableString(json: JSONObject, key: String): String? =
         json.optString(key).takeIf { it.isNotBlank() && it != "null" }

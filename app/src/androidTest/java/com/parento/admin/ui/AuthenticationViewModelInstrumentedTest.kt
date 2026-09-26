@@ -90,7 +90,7 @@ class AuthenticationViewModelInstrumentedTest {
     }
 
     private fun session() = AuthenticationSession(
-        authenticationTestAdmin = authenticationTestAdmin,
+        admin = authenticationTestAdmin,
         accessToken = "access-token-12345678901234567890",
         refreshToken = "refresh-token-12345678901234567890",
         accessTokenExpiresAtEpochMillis = System.currentTimeMillis() + 60_000,

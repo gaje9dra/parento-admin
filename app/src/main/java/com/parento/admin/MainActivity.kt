@@ -351,6 +351,7 @@ class MainActivity : AppCompatActivity() {
                 root = frame,
                 viewModel = screenSharingViewModel,
                 onBack = {
+                    screenSharingViewModel.clearDevice()
                     navigator.navigate(AdminDestination.DEVICES)
                     renderDeviceDetailIfSelected()
                 },

@@ -2,6 +2,7 @@ package com.parento.admin
 
 import com.parento.admin.audio.AudioAccessSession
 import com.parento.admin.audio.AudioAccessSessionStatus
+import com.parento.admin.audio.AudioTransportState
 import com.parento.admin.audio.isPlaybackEligible
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -10,7 +11,7 @@ import org.junit.Test
 class AudioAccessModelsTest {
     private fun session(
         status: AudioAccessSessionStatus,
-        transportState: String = "ACTIVE",
+        transportState: AudioTransportState = AudioTransportState.ACTIVE,
     ) = AudioAccessSession(
         sessionId = "session-1",
         managedDeviceId = "device-1",
@@ -23,14 +24,14 @@ class AudioAccessModelsTest {
         lastActivityAt = "2026-09-26T00:00:02Z",
         terminationReason = null,
         correlationId = "correlation-1",
-        transportState = mapOf("state" to transportState),
+        transportState = transportState,
     )
 
     @Test
     fun onlyActiveSessionWithActiveTransportIsPlaybackEligible() {
         assertTrue(session(AudioAccessSessionStatus.ACTIVE).isPlaybackEligible())
         assertFalse(session(AudioAccessSessionStatus.STARTING).isPlaybackEligible())
-        assertFalse(session(AudioAccessSessionStatus.ACTIVE, "DISCONNECTED").isPlaybackEligible())
+        assertFalse(session(AudioAccessSessionStatus.ACTIVE, AudioTransportState.DISCONNECTED).isPlaybackEligible())
     }
 
     @Test

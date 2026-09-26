@@ -47,6 +47,7 @@ class DeviceManagementScreen(
         state: DeviceDetailUiState,
         onBack: () -> Unit,
         onStartScreenSharing: (ManagedDeviceStatus) -> Unit,
+        onStartAudioAccess: (ManagedDeviceStatus) -> Unit,
     ) {
         root.removeAllViews()
         val column = column()
@@ -66,6 +67,7 @@ class DeviceManagementScreen(
                 column.addView(button("Refresh status") { viewModel.refreshSelectedDevice() })
                 renderCommand(column, state)
                 renderScreenSharing(column, state.status, onStartScreenSharing)
+                renderAudioAccess(column, state.status, onStartAudioAccess)
             }
         }
         root.addView(ScrollView(root.context).apply { addView(column) })
@@ -171,6 +173,32 @@ class DeviceManagementScreen(
             if (eligible) "Only an enrolled, authorized and connected device can start a screen-sharing session."
             else "Screen sharing requires an enrolled, non-revoked device with an active communication session."
         ))
+    }
+
+    private fun renderAudioAccess(
+        column: LinearLayout,
+        status: ManagedDeviceStatus,
+        onStart: (ManagedDeviceStatus) -> Unit,
+    ) {
+        column.addView(section("Audio access"))
+        val eligible = status.enrollmentState == com.parento.admin.domain.EnrollmentState.ENROLLED &&
+            status.deviceStatus != com.parento.admin.domain.DeviceStatus.REVOKED &&
+            status.connectionState == com.parento.admin.domain.ConnectionState.CONNECTED &&
+            status.deviceStatus in setOf(
+                com.parento.admin.domain.DeviceStatus.AVAILABLE,
+                com.parento.admin.domain.DeviceStatus.CONNECTED,
+            )
+        column.addView(
+            button(if (eligible) "Open audio access" else "Audio access unavailable") {
+                onStart(status)
+            }.apply { isEnabled = eligible && BuildConfig.PARENTO_FEATURE_AUDIO },
+        )
+        column.addView(
+            text(
+                if (eligible) "Audio access requires an enrolled, authorized and connected device. Starting is always explicit."
+                else "Audio access requires an enrolled, non-revoked device with an active communication session.",
+            ),
+        )
     }
 
     private fun deviceCard(device: ManagedDeviceStatus, onClick: () -> Unit): LinearLayout =

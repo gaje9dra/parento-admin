@@ -183,7 +183,8 @@ class DeviceManagementScreen(
         onStart: (ManagedDeviceStatus) -> Unit,
     ) {
         column.addView(section("Audio access"))
-        val eligible = status.enrollmentState == com.parento.admin.domain.EnrollmentState.ENROLLED &&
+        val eligible = BuildConfig.PARENTO_FEATURE_AUDIO &&
+            status.enrollmentState == com.parento.admin.domain.EnrollmentState.ENROLLED &&
             status.deviceStatus != com.parento.admin.domain.DeviceStatus.REVOKED &&
             status.connectionState == com.parento.admin.domain.ConnectionState.CONNECTED &&
             status.deviceStatus in setOf(

@@ -6,6 +6,7 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.FrameLayout
 import com.parento.admin.screensharing.ScreenSharingSessionStatus
 
 class ScreenSharingScreen(
@@ -57,7 +58,14 @@ class ScreenSharingScreen(
 
         if (session.status == ScreenSharingSessionStatus.ACTIVE) {
             column.addView(section("Viewer"))
-            column.addView(text("Session is ACTIVE, but no approved frame transport is exposed by the current backend contract. The viewer therefore remains blank rather than fabricating or showing stale content."))
+            val viewer = FrameLayout(root.context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    (240 * resources.displayMetrics.density).toInt(),
+                )
+            }
+            ScreenViewerScreen(viewer).render(session)
+            column.addView(viewer)
         } else {
             column.addView(section("Viewer"))
             column.addView(text(statusMessage(session.status)))

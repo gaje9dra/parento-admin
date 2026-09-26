@@ -80,6 +80,8 @@ class AudioAccessViewModel(
 
     fun start() {
         val device = selectedDevice ?: return
+        val currentSession = (_uiState.value as? AudioAccessUiState.Session)?.value
+        if (currentSession != null) return
         if (operationBusy || _uiState.value is AudioAccessUiState.Loading) return
         validateDevice(device)?.let {
             _uiState.value = AudioAccessUiState.Error(it, canRetry = false)

@@ -170,13 +170,16 @@ class AdminBackendApiClient(
         return execute("GET", "/api/v1/audio-sessions/" + encodePathSegment(sessionId)) { root ->
             parseAudioAccessSession(root.getJSONObject("data").getJSONObject("session"))
         }
+    }
 
     suspend fun stopAudioAccessSession(
         sessionId: String,
-    ): OperationResult<AudioAccessSession> =
-        execute("POST", "/api/v1/audio-sessions/" + sessionId + "/stop") { root ->
+    ): OperationResult<AudioAccessSession> {
+        if (sessionId.isBlank()) return OperationResult.Failure(AdminError.Validation)
+        return execute("POST", "/api/v1/audio-sessions/" + encodePathSegment(sessionId) + "/stop") { root ->
             parseAudioAccessSession(root.getJSONObject("data").getJSONObject("session"))
         }
+    }
 
     suspend fun createFutureCommand(deviceId: String, idempotencyKey: String): OperationResult<AdminCommand> =
         execute(

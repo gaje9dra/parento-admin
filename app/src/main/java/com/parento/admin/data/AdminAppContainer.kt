@@ -1,10 +1,12 @@
 package com.parento.admin.data
 
 import android.content.Context
+import com.parento.admin.communication.AdminBackendApiClient
 import com.parento.admin.communication.AuthenticationApiClient
 import com.parento.admin.config.AdminApplicationConfig
 import com.parento.admin.data.local.LocalDatabaseFactory
 import com.parento.admin.data.local.ParentoAdminDatabase
+import com.parento.admin.device.ManagedDeviceRepository
 import com.parento.admin.security.SecureSessionStore
 import com.parento.admin.location.ContractPendingDeviceLocationRepository
 import com.parento.admin.location.DeviceLocationRepository
@@ -24,6 +26,31 @@ class AdminAppContainer(context: Context) : AutoCloseable {
         SecureSessionStore(applicationContext)
     }
 
+    val authenticationRepository: AuthenticationRepositoryImpl by lazy(
+        LazyThreadSafetyMode.SYNCHRONIZED,
+    ) {
+        AuthenticationRepositoryImpl(
+            api = AuthenticationApiClient(AdminApplicationConfig.get()),
+            secureStore = secureSessionStore,
+        )
+    }
+
+    /**
+     * Reuses the authenticated backend boundary for managed-device
+     * monitoring and command lifecycle operations.
+     */
+    val adminBackendApiClient: AdminBackendApiClient by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        AdminBackendApiClient(
+            config = AdminApplicationConfig.get(),
+            authenticationRepository = authenticationRepository,
+            sessionStore = secureSessionStore,
+        )
+    }
+
+    val managedDeviceRepository: ManagedDeviceRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        ManagedDeviceRepositoryImpl(adminBackendApiClient)
+    }
+
     /**
      * Admin-side location repository boundary.
      *
@@ -35,15 +62,6 @@ class AdminAppContainer(context: Context) : AutoCloseable {
         LazyThreadSafetyMode.SYNCHRONIZED,
     ) {
         ContractPendingDeviceLocationRepository()
-    }
-
-    val authenticationRepository: AuthenticationRepositoryImpl by lazy(
-        LazyThreadSafetyMode.SYNCHRONIZED,
-    ) {
-        AuthenticationRepositoryImpl(
-            api = AuthenticationApiClient(AdminApplicationConfig.get()),
-            secureStore = secureSessionStore,
-        )
     }
 
     override fun close() {

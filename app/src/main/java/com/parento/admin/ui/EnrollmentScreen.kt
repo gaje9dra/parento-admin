@@ -91,8 +91,18 @@ class EnrollmentScreen(
         state.enrollment?.let {
             addStatus(container, it.status)
             addAction(container, R.string.refresh_enrollment) { viewModel.refresh() }
-            if (it.status.isTerminal) addAction(container, R.string.create_enrollment) { viewModel.createEnrollment() }
-        } ?: addAction(container, R.string.create_enrollment) { viewModel.createEnrollment() }
+            if (!it.status.isTerminal) {
+                addAction(container, R.string.cancel_enrollment) { viewModel.cancelEnrollment() }
+            } else {
+                addAction(container, R.string.create_enrollment) { viewModel.createEnrollment() }
+            }
+        } ?: if (state.canRetry) {
+            addAction(container, R.string.create_enrollment) { viewModel.createEnrollment() }
+        } else if (state.message.contains("outcome is unknown", ignoreCase = true)) {
+            addAction(container, R.string.refresh_enrollment) { viewModel.reconcileCreateFailure() }
+        } else {
+            Unit
+        }
     }
 
     private fun addStatus(container: LinearLayout, status: EnrollmentSessionStatus) =

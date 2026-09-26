@@ -13,7 +13,7 @@ class AdminHomeScreen(
     private val root: FrameLayout,
     private val viewModel: AdminHomeViewModel,
     private val admin: AuthenticatedAdmin,
-    private val onNavigate: (AdminDestination) -> Unit,
+    private val onNavigate: (AdminDestination, String?) -> Unit,
 ) {
     fun render(state: AdminUiState) {
         root.removeAllViews()
@@ -51,8 +51,6 @@ class AdminHomeScreen(
             )
         }
 
-        content.addView(navigationButton(AdminDestination.ENROLLMENT, R.string.nav_enrollment))
-        content.addView(navigationButton(AdminDestination.ENROLLMENT, R.string.nav_enrollment))
         content.addView(navigationButton(AdminDestination.DEVICES, R.string.nav_devices))
         content.addView(navigationButton(AdminDestination.POLICIES, R.string.nav_policies))
         content.addView(navigationButton(AdminDestination.SETTINGS, R.string.nav_settings))
@@ -93,6 +91,16 @@ class AdminHomeScreen(
             text = root.context.getString(R.string.devices_available, state.managedDevices.size)
             textSize = 16f
         })
+        state.managedDevices.forEach { device ->
+            container.addView(MaterialButton(root.context).apply {
+                text = root.context.getString(R.string.location_open_device, device.displayName)
+                contentDescription = text
+                minHeight = resources.getDimensionPixelSize(R.dimen.minimum_touch_target)
+                setOnClickListener {
+                    onNavigate(AdminDestination.LOCATION, device.deviceId)
+                }
+            })
+        }
     }
 
     private fun navigationButton(destination: AdminDestination, label: Int): View =
@@ -100,6 +108,6 @@ class AdminHomeScreen(
             text = root.context.getString(label)
             minHeight = resources.getDimensionPixelSize(R.dimen.minimum_touch_target)
             contentDescription = root.context.getString(label)
-            setOnClickListener { onNavigate(destination) }
+            setOnClickListener { onNavigate(destination, null) }
         }
 }

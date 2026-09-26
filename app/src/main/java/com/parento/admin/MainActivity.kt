@@ -328,11 +328,17 @@ class MainActivity : AppCompatActivity() {
         contentRoot.removeAllViews()
         contentRoot.addView(FrameLayout(this).also { frame ->
             DeviceManagementScreen(frame, deviceViewModel).renderDetail(
-                state,
-            ) {
-                deviceViewModel.clearSelection()
-                renderDeviceList()
-            }
+                state = state,
+                onStartScreenSharing = { status ->
+                    screenSharingViewModel.bindDevice(status)
+                    navigator.navigate(AdminDestination.SCREEN_SHARING)
+                    renderScreenSharing()
+                },
+                onBack = {
+                    deviceViewModel.clearSelection()
+                    renderDeviceList()
+                },
+            )
         })
     }
 

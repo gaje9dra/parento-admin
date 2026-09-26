@@ -12,7 +12,6 @@ interface AudioTransport {
     val state: AudioPlaybackState
 
     suspend fun connect(
-        adminSessionBinding: String,
         managedDeviceId: String,
         audioSessionId: String,
         transportState: Map<String, String>,

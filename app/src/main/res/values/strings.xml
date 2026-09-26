@@ -47,6 +47,7 @@
     <string name="location_open_device">Open location: %1$s</string>
     <string name="location_back">Back to devices</string>
     <string name="screen_sharing_title">Screen sharing</string>
+    <string name="audio_access_title">Live audio access</string>
     <string name="enrollment_title">Enroll managed device</string>
     <string name="enrollment_subtitle">Create and securely complete a managed-device enrollment.</string>
     <string name="create_enrollment">Create enrollment</string>

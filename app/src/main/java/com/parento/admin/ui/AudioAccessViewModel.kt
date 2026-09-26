@@ -155,6 +155,27 @@ class AudioAccessViewModel(
     fun retry() {
         val state = _uiState.value
         if (state !is AudioAccessUiState.Error || !state.canRetry) return
+        if (sessionId != null) {
+            reconcile()
+        } else {
+            start()
+        }
+    }
+
+    fun retryPlayback() {
+        val session = (_uiState.value as? AudioAccessUiState.Session)?.value ?: return
+        if (session.status != AudioAccessSessionStatus.ACTIVE) return
+        playbackAttemptedSessionId = null
+        applySession(session)
+    }
+
+    fun startNewSession() {
+        val current = (_uiState.value as? AudioAccessUiState.Session)?.value ?: return
+        if (!current.status.isTerminal) return
+        sessionId = null
+        playbackAttemptedSessionId = null
+        operationBusy = false
+        _uiState.value = AudioAccessUiState.Idle
         start()
     }
 

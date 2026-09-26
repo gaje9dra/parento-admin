@@ -1,11 +1,12 @@
 package com.parento.admin.data
 
 import android.content.Context
+import com.parento.admin.communication.AdminBackendApiClient
 import com.parento.admin.communication.AuthenticationApiClient
-import com.parento.admin.communication.EnrollmentApiClient
 import com.parento.admin.config.AdminApplicationConfig
 import com.parento.admin.data.local.LocalDatabaseFactory
 import com.parento.admin.data.local.ParentoAdminDatabase
+import com.parento.admin.device.ManagedDeviceRepository
 import com.parento.admin.security.SecureSessionStore
 
 class AdminAppContainer(context: Context) : AutoCloseable {
@@ -32,13 +33,16 @@ class AdminAppContainer(context: Context) : AutoCloseable {
         )
     }
 
-    val enrollmentRepository: EnrollmentRepositoryImpl by lazy(
-        LazyThreadSafetyMode.SYNCHRONIZED,
-    ) {
-        EnrollmentRepositoryImpl(
-            api = EnrollmentApiClient(AdminApplicationConfig.get()),
+    val adminBackendApiClient: AdminBackendApiClient by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        AdminBackendApiClient(
+            config = AdminApplicationConfig.get(),
+            authenticationRepository = authenticationRepository,
             sessionStore = secureSessionStore,
         )
+    }
+
+    val managedDeviceRepository: ManagedDeviceRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        ManagedDeviceRepositoryImpl(adminBackendApiClient)
     }
 
     override fun close() {

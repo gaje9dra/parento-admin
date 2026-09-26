@@ -17,8 +17,8 @@ android {
         versionName = "0.1.0"
 
         buildConfigField("boolean", "PARENTO_FEATURE_AUTHENTICATION", "true")
-        buildConfigField("boolean", "PARENTO_FEATURE_ENROLLMENT", "true")
-        buildConfigField("boolean", "PARENTO_FEATURE_DEVICE_COMMUNICATION", "false")
+        buildConfigField("boolean", "PARENTO_FEATURE_ENROLLMENT", "false")
+        buildConfigField("boolean", "PARENTO_FEATURE_DEVICE_COMMUNICATION", "true")
         buildConfigField("boolean", "PARENTO_FEATURE_LOCATION", "false")
         buildConfigField("boolean", "PARENTO_FEATURE_SCREEN_SHARING", "false")
         buildConfigField("boolean", "PARENTO_FEATURE_AUDIO", "false")
@@ -80,7 +80,6 @@ dependencies {
     ksp("androidx.room:room-compiler:2.8.5")
 
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 
     androidTestImplementation("androidx.test:core:1.6.1")
     androidTestImplementation("androidx.test:runner:1.6.2")

@@ -14,6 +14,9 @@ import com.google.android.gms.maps.MapView
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.textview.MaterialTextView
 import com.parento.admin.auth.AuthenticationState
+import com.parento.admin.ui.AudioAccessViewModel
+import com.parento.admin.ui.AudioAccessViewModelFactory
+import com.parento.admin.ui.AudioAccessScreen
 import com.parento.admin.location.DeviceLocationUseCase
 import com.parento.admin.navigation.AdminDestination
 import com.parento.admin.navigation.AdminNavigator
@@ -37,6 +40,18 @@ class MainActivity : AppCompatActivity() {
     private var hasCompletedInitialStart = false
     private var selectedLocationDeviceId: String? = null
     private var locationMapView: MapView? = null
+
+    private val audioAccessViewModel: AudioAccessViewModel by lazy {
+        ViewModelProvider(
+            this,
+            AudioAccessViewModelFactory(
+                repository = appContainer.audioAccessRepository,
+                transport = appContainer.audioTransport,
+                playback = com.parento.admin.audio.SessionBoundAudioPlaybackController(),
+                onSessionExpired = { authViewModel.validateCurrentSession() },
+            ),
+        )[AudioAccessViewModel::class.java]
+    }
 
     private val screenSharingViewModel: ScreenSharingViewModel by lazy {
         ViewModelProvider(
@@ -122,6 +137,13 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 launch {
+                    audioAccessViewModel.uiState.collect {
+                        if (navigator.currentDestination == AdminDestination.AUDIO_ACCESS) {
+                            renderAudioAccess()
+                        }
+                    }
+                }
+                launch {
                     screenSharingViewModel.uiState.collect {
                         if (navigator.currentDestination == AdminDestination.SCREEN_SHARING) {
                             renderScreenSharing()
@@ -142,6 +164,15 @@ class MainActivity : AppCompatActivity() {
             this,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
+                    if (authViewModel.state.value is AuthenticationState.Authenticated &&
+                        navigator.currentDestination == AdminDestination.AUDIO_ACCESS
+                    ) {
+                        audioAccessViewModel.clearDevice()
+                        navigator.navigate(AdminDestination.DEVICES)
+                        renderDeviceDetailIfSelected()
+                        return
+                    }
+
                     if (authViewModel.state.value is AuthenticationState.Authenticated &&
                         navigator.currentDestination == AdminDestination.SCREEN_SHARING
                     ) {
@@ -198,6 +229,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStop() {
         screenSharingViewModel.onBackground()
+        audioAccessViewModel.onBackground()
         locationMapView?.onStop()
         super.onStop()
     }
@@ -231,6 +263,7 @@ class MainActivity : AppCompatActivity() {
                 navigator.navigate(AdminDestination.HOME)
                 selectedLocationDeviceId = null
                 screenSharingViewModel.clearDevice()
+                audioAccessViewModel.handleAdminLogout()
                 toolbar.title = getString(R.string.login_title)
                 contentRoot.removeAllViews()
                 contentRoot.addView(FrameLayout(this).also { frame ->
@@ -302,6 +335,7 @@ class MainActivity : AppCompatActivity() {
             )
             AdminDestination.LOCATION -> renderLocation()
             AdminDestination.SCREEN_SHARING -> renderScreenSharing()
+            AdminDestination.AUDIO_ACCESS -> renderAudioAccess()
         }
     }
 
@@ -336,11 +370,29 @@ class MainActivity : AppCompatActivity() {
                     navigator.navigate(AdminDestination.SCREEN_SHARING)
                     renderScreenSharing()
                 },
+                onStartAudioAccess = { status ->
+                    audioAccessViewModel.bindDevice(status)
+                    navigator.navigate(AdminDestination.AUDIO_ACCESS)
+                    renderAudioAccess()
+                },
                 onBack = {
                     deviceViewModel.clearSelection()
                     renderDeviceList()
                 },
             )
+        })
+    }
+
+    private fun renderAudioAccess() {
+        if (navigator.currentDestination != AdminDestination.AUDIO_ACCESS) return
+        toolbar.title = getString(R.string.audio_access_title)
+        contentRoot.removeAllViews()
+        contentRoot.addView(FrameLayout(this).also { frame ->
+            AudioAccessScreen(
+                root = frame,
+                viewModel = audioAccessViewModel,
+                device = deviceViewModel.currentSelectedDeviceStatus(),
+            ).render(audioAccessViewModel.uiState.value, deviceViewModel.currentSelectedDeviceStatus())
         })
     }
 

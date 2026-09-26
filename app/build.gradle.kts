@@ -5,6 +5,9 @@ plugins {
     id("androidx.room")
 }
 
+val mapsApiKey = providers.gradleProperty("MAPS_API_KEY").orElse("").get()
+val escapedMapsApiKey = mapsApiKey.replace("\\", "\\\\").replace("\"", "\\\"")
+
 android {
     namespace = "com.parento.admin"
     compileSdk = 36

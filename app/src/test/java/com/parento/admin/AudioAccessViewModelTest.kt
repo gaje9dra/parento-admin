@@ -167,7 +167,7 @@ class AudioAccessViewModelTest {
             createResult
 
         override suspend fun stopSession(sessionId: String): OperationResult<AudioAccessSession> =
-            OperationResult.Success(session())
+            createResult
     }
 
     private class FakePlayback : AudioPlaybackController {

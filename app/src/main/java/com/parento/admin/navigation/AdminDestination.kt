@@ -6,4 +6,5 @@ enum class AdminDestination {
     POLICIES,
     SETTINGS,
     LOCATION,
+    SCREEN_SHARING,
 }

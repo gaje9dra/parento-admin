@@ -74,7 +74,6 @@ class AuthenticationViewModelInstrumentedTest {
 
         assertEquals(AuthenticationState.Unauthenticated, viewModel.state.value)
         assertTrue(repository.logoutCalls > 0)
-        viewModel.clear()
     }
 
     @Test
@@ -88,7 +87,6 @@ class AuthenticationViewModelInstrumentedTest {
         delay(100)
 
         assertEquals(AuthenticationState.SessionRevoked, viewModel.state.value)
-        viewModel.clear()
     }
 
     private fun session() = AuthenticationSession(
@@ -131,7 +129,14 @@ class AuthenticationViewModelInstrumentedTest {
         }
 
         override suspend fun getCurrentAuthenticatedAdmin(): OperationResult<AuthenticatedAdmin> =
-            OperationResult.Success(admin)
+            OperationResult.Success(
+                AuthenticatedAdmin(
+                    id = "admin-1",
+                    email = "admin@example.com",
+                    status = "ACTIVE",
+                    lastAuthenticatedAt = null,
+                ),
+            )
 
         override suspend fun restoreSession(): OperationResult<AuthenticatedAdmin?> =
             restoreResult

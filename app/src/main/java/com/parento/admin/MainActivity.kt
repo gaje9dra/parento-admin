@@ -180,6 +180,7 @@ class MainActivity : AppCompatActivity() {
         locationMapView?.onStart()
         if (hasCompletedInitialStart) {
             authViewModel.validateCurrentSession()
+            screenSharingViewModel.onForeground()
         } else {
             hasCompletedInitialStart = true
         }
@@ -196,6 +197,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
+        screenSharingViewModel.onBackground()
         locationMapView?.onStop()
         super.onStop()
     }

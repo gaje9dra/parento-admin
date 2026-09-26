@@ -25,7 +25,7 @@ android {
         buildConfigField("boolean", "PARENTO_FEATURE_LOCATION", "true")
         buildConfigField("String", "PARENTO_MAPS_API_KEY", "\"$escapedMapsApiKey\"")
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
-        buildConfigField("boolean", "PARENTO_FEATURE_SCREEN_SHARING", "false")
+        buildConfigField("boolean", "PARENTO_FEATURE_SCREEN_SHARING", "true")
         buildConfigField("boolean", "PARENTO_FEATURE_AUDIO", "false")
         buildConfigField("boolean", "PARENTO_FEATURE_APPLICATION_MANAGEMENT", "false")
         buildConfigField("boolean", "PARENTO_FEATURE_WEBSITE_FILTERING", "false")
@@ -86,6 +86,7 @@ dependencies {
     ksp("androidx.room:room-compiler:2.8.5")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 
     androidTestImplementation("androidx.test:core:1.6.1")
     androidTestImplementation("androidx.test:runner:1.6.2")

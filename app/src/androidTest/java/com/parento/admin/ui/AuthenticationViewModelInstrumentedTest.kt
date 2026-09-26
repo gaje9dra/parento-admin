@@ -15,15 +15,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
+private val authenticationTestAdmin = AuthenticatedAdmin(
+    id = "admin-1",
+    email = "admin@example.com",
+    status = "ACTIVE",
+    lastAuthenticatedAt = null,
+)
+
 @RunWith(AndroidJUnit4::class)
 class AuthenticationViewModelInstrumentedTest {
-    private val admin = AuthenticatedAdmin(
-        id = "admin-1",
-        email = "admin@example.com",
-        status = "ACTIVE",
-        lastAuthenticatedAt = null,
-    )
-
     @Test
     fun duplicateLoginSubmissionsProduceOneAuthenticationRequest() = runBlocking {
         val repository = FakeRepository(loginDelayMillis = 150)
@@ -35,7 +35,7 @@ class AuthenticationViewModelInstrumentedTest {
         delay(350)
 
         assertEquals(1, repository.loginCalls)
-        assertEquals(AuthenticationState.Authenticated(admin), viewModel.state.value)
+        assertEquals(AuthenticationState.Authenticated(authenticationTestAdmin), viewModel.state.value)
     }
 
     @Test
@@ -90,7 +90,7 @@ class AuthenticationViewModelInstrumentedTest {
     }
 
     private fun session() = AuthenticationSession(
-        admin = admin,
+        admin = authenticationTestAdmin,
         accessToken = "access-token-12345678901234567890",
         refreshToken = "refresh-token-12345678901234567890",
         accessTokenExpiresAtEpochMillis = System.currentTimeMillis() + 60_000,
@@ -101,7 +101,7 @@ class AuthenticationViewModelInstrumentedTest {
         private val loginDelayMillis: Long = 0,
         private val logoutResult: OperationResult<Unit> = OperationResult.Success(Unit),
         private val loginResult: OperationResult<AuthenticatedAdmin> =
-            OperationResult.Success(admin),
+            OperationResult.Success(authenticationTestAdmin),
         private val restoreResult: OperationResult<AuthenticatedAdmin?> =
             OperationResult.Success(null),
     ) : AuthenticationRepository {

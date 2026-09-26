@@ -23,10 +23,11 @@ class NavigationTest {
         assertEquals(
             listOf(
                 AdminDestination.HOME,
-                AdminDestination.ENROLLMENT,
                 AdminDestination.DEVICES,
                 AdminDestination.POLICIES,
                 AdminDestination.SETTINGS,
+                AdminDestination.LOCATION,
+                AdminDestination.SCREEN_SHARING,
             ),
             AdminDestination.entries,
         )

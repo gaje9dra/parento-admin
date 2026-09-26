@@ -158,3 +158,22 @@ The backend contract currently has no Admin-authenticated realtime status/event 
 The command contract currently exposes only the neutral `FUTURE_COMMAND` type with an empty payload. No later-phase sensitive command is introduced by the Admin app.
 
 No backend or managed-app source is modified by Phase 6.5.
+
+
+## Phase 9.3 — Admin screen-sharing contract
+
+The Admin app consumes the Phase 9.1 backend screen-session contract:
+
+- POST `/api/v1/devices/{deviceId}/screen-sessions`
+- GET `/api/v1/screen-sessions/{sessionId}`
+- POST `/api/v1/screen-sessions/{sessionId}/stop`
+
+The Admin UI uses the existing authenticated API client and ManagedDevice architecture. It does not create a direct Admin-to-Managed connection.
+
+The Phase 9.1 backend currently provides session lifecycle/signaling and command delivery, but no media-frame transport. The Admin app therefore defines a `ScreenStreamClient` boundary without adding a speculative streaming protocol, media server, codec, or fake frames.
+
+No Admin screen frames are persisted, exported, recorded, or logged. The Activity retains the existing `FLAG_SECURE` behavior.
+
+Session status is reconciled through the authenticated API while non-terminal. No second realtime channel is created because Phase 9.1 does not expose an Admin-authenticated screen-session event stream.
+
+Only `gaje9dra/parento-admin` is modified by Phase 9.3. Any future media transport requirement belongs to the backend/Managed contract and must be documented before implementation.

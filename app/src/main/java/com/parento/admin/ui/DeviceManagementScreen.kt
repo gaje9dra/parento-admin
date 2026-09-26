@@ -1,5 +1,7 @@
 package com.parento.admin.ui
 
+import com.parento.admin.BuildConfig
+
 import android.graphics.Typeface
 import android.view.ViewGroup
 import android.widget.Button

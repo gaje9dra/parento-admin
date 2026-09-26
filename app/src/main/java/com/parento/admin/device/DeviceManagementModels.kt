@@ -5,7 +5,7 @@ import com.parento.admin.domain.DeviceStatus
 import com.parento.admin.domain.EnrollmentState
 
 enum class ManagementMode { UNMANAGED, PROFILE_OWNER, DEVICE_OWNER, UNKNOWN }
-enum class MonitoringFreshness { CURRENT, STALE, UNKNOWN }
+enum class MonitoringFreshness { CURRENT, STALE, VERY_STALE, NEVER_REPORTED, DISCONNECTED, REVOKED, UNKNOWN }
 
 data class DeviceMonitoring(
     val androidVersion: String,
@@ -26,6 +26,7 @@ data class DeviceMonitoring(
     val lastSuccessfulInitializationAt: String?,
     val lastSuccessfulCommunicationAt: String?,
     val lastMonitoringUpdateAt: String,
+    val serverReceivedAt: String? = null,
 )
 
 data class ManagedDeviceStatus(
@@ -34,11 +35,13 @@ data class ManagedDeviceStatus(
     val enrollmentState: EnrollmentState,
     val deviceStatus: DeviceStatus,
     val connectionState: ConnectionState,
+    val firstEnrolledAt: String? = null,
     val lastSeenAt: String?,
     val lastSeenAgeMs: Long?,
     val expiresAt: String?,
     val monitoringFreshness: MonitoringFreshness,
     val monitoring: DeviceMonitoring?,
+    val nextCursor: String? = null,
 )
 
 enum class AdminCommandType(val wireValue: String) {
@@ -71,4 +74,9 @@ data class AdminCommand(
 data class EnrollmentDeviceReference(
     val deviceId: String,
     val enrollmentStatus: String,
+)
+
+data class DeviceListPage(
+    val devices: List<ManagedDeviceStatus>,
+    val nextCursor: String?,
 )

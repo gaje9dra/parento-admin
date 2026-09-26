@@ -26,7 +26,7 @@ android {
         buildConfigField("String", "PARENTO_MAPS_API_KEY", "\"$escapedMapsApiKey\"")
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
         buildConfigField("boolean", "PARENTO_FEATURE_SCREEN_SHARING", "true")
-        buildConfigField("boolean", "PARENTO_FEATURE_AUDIO", "false")
+        buildConfigField("boolean", "PARENTO_FEATURE_AUDIO", "true")
         buildConfigField("boolean", "PARENTO_FEATURE_APPLICATION_MANAGEMENT", "false")
         buildConfigField("boolean", "PARENTO_FEATURE_WEBSITE_FILTERING", "false")
         buildConfigField("boolean", "PARENTO_FEATURE_DEVICE_RESTRICTIONS", "false")

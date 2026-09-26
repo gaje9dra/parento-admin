@@ -8,6 +8,7 @@ import com.parento.admin.config.SecurityConfig
 import com.parento.admin.logging.LogLevel
 import com.parento.admin.security.securityConfiguration
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -40,11 +41,11 @@ class SecurityConfigurationTest {
     fun testAndProductionDiagnosticsAreNotAllowed() {
         val testSecurity = config(AppEnvironment.TEST, allowDiagnostics = true)
             .securityConfiguration()
-        val productionSecurity = config(AppEnvironment.PRODUCTION, allowDiagnostics = true)
-            .securityConfiguration()
-
         assertFalse(testSecurity.debugDiagnosticsAllowed)
-        assertTrue(productionSecurity.requireHttps)
-        assertFalse(productionSecurity.debugDiagnosticsAllowed)
+
+        val exception = assertThrows(IllegalArgumentException::class.java) {
+            config(AppEnvironment.PRODUCTION, allowDiagnostics = true)
+        }
+        assertTrue(exception.message?.contains("debug diagnostics") == true)
     }
 }

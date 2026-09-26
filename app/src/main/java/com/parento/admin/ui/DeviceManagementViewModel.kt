@@ -3,14 +3,11 @@ package com.parento.admin.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.parento.admin.device.AdminCommand
-import com.parento.admin.device.EnrollmentDeviceReference
 import com.parento.admin.device.ManagedDeviceRepository
 import com.parento.admin.device.ManagedDeviceStatus
 import com.parento.admin.domain.AdminError
 import com.parento.admin.domain.OperationResult
 import java.util.UUID
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,7 +16,7 @@ import kotlinx.coroutines.launch
 sealed interface DeviceListUiState {
     data object Loading : DeviceListUiState
     data object Empty : DeviceListUiState
-    data class Content(val devices: List<ManagedDeviceStatus>) : DeviceListUiState
+    data class Content(val devices: List<ManagedDeviceStatus>, val nextCursor: String? = null, val loadingMore: Boolean = false) : DeviceListUiState
     data class Error(val message: String, val canRetry: Boolean = true) : DeviceListUiState
 }
 
@@ -52,36 +49,42 @@ class DeviceManagementViewModel(
         _listState.value = DeviceListUiState.Loading
         viewModelScope.launch {
             when (val result = repository.listDevices()) {
-                is OperationResult.Success -> loadStatuses(result.value)
+                is OperationResult.Success -> applyPage(result.value, append = false)
                 is OperationResult.Failure -> handleListFailure(result.error)
             }
         }
     }
 
-    private suspend fun loadStatuses(references: List<EnrollmentDeviceReference>) {
-        if (references.isEmpty()) {
-            _listState.value = DeviceListUiState.Empty
-            return
-        }
-        val statuses = references.map { reference ->
-            viewModelScope.async {
-                repository.getDeviceStatus(reference.deviceId)
-            }
-        }.awaitAll().mapNotNull { result ->
-            when (result) {
-                is OperationResult.Success -> result.value
+    fun loadMoreDevices() {
+        val current = _listState.value as? DeviceListUiState.Content ?: return
+        val cursor = current.nextCursor ?: return
+        if (current.loadingMore) return
+        _listState.value = current.copy(loadingMore = true)
+        viewModelScope.launch {
+            when (val result = repository.listDevices(cursor)) {
+                is OperationResult.Success -> applyPage(result.value, append = true)
                 is OperationResult.Failure -> {
                     if (result.error is AdminError.SessionExpired) onSessionExpired()
-                    null
+                    _listState.value = current.copy(loadingMore = false)
                 }
             }
         }
-        if (statuses.isEmpty()) {
-            _listState.value = DeviceListUiState.Error(
-                message = "Managed-device status is currently unavailable.",
-            )
+    }
+
+    private fun applyPage(
+        page: com.parento.admin.device.DeviceListPage,
+        append: Boolean,
+    ) {
+        val existing = (_listState.value as? DeviceListUiState.Content)?.devices.orEmpty()
+        val devices = if (append) existing + page.devices else page.devices
+        _listState.value = if (devices.isEmpty()) {
+            DeviceListUiState.Empty
         } else {
-            _listState.value = DeviceListUiState.Content(statuses)
+            DeviceListUiState.Content(
+                devices = devices.distinctBy { it.deviceId },
+                nextCursor = page.nextCursor,
+                loadingMore = false,
+            )
         }
     }
 

@@ -10,6 +10,7 @@ import com.parento.admin.device.ManagedDeviceRepository
 import com.parento.admin.security.SecureSessionStore
 import com.parento.admin.location.ContractPendingDeviceLocationRepository
 import com.parento.admin.location.DeviceLocationRepository
+import com.parento.admin.screensharing.ScreenSharingRepository
 
 class AdminAppContainer(context: Context) : AutoCloseable {
     private val applicationContext = context.applicationContext
@@ -49,6 +50,10 @@ class AdminAppContainer(context: Context) : AutoCloseable {
 
     val managedDeviceRepository: ManagedDeviceRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         ManagedDeviceRepositoryImpl(adminBackendApiClient)
+    }
+
+    val screenSharingRepository: ScreenSharingRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        ScreenSharingRepositoryImpl(adminBackendApiClient)
     }
 
     /**

@@ -21,13 +21,9 @@ class ScreenViewerScreen(
         }
         surface.addView(TextView(root.context).apply {
             text = if (session?.status?.name == "ACTIVE") {
-                "LIVE VIEWER
-
-No approved media-frame transport is available in the current backend contract."
+                "LIVE VIEWER\n\nNo approved media-frame transport is available in the current backend contract."
             } else {
-                "SCREEN VIEWER
-
-No live screen content."
+                "SCREEN VIEWER\n\nNo live screen content."
             }
             setTextColor(Color.WHITE)
             textSize = 16f

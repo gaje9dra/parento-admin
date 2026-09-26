@@ -1,20 +1,26 @@
 package com.parento.admin.audio
 
+import com.parento.admin.domain.AdminError
 import com.parento.admin.domain.OperationResult
 
 /**
  * Session-bound boundary for the approved live-audio transport.
  *
- * Phase 10.1 defines control/signaling metadata but no production media-byte
- * protocol or codec. The default implementation therefore fails closed.
+ * The current backend contract exposes control/signaling state but no
+ * production media-byte protocol or codec. The default implementation
+ * therefore fails closed.
  */
+data class AudioTransportContext(
+    val managedDeviceId: String,
+    val audioSessionId: String,
+)
+
 interface AudioTransport {
     val state: AudioPlaybackState
 
     suspend fun connect(
-        managedDeviceId: String,
-        audioSessionId: String,
-        transportState: Map<String, String>,
+        context: AudioTransportContext,
+        transportState: AudioTransportState,
     ): OperationResult<Unit>
 
     suspend fun disconnect()
@@ -29,14 +35,19 @@ class UnavailableAudioTransport : AudioTransport {
         private set
 
     override suspend fun connect(
-        managedDeviceId: String,
-        audioSessionId: String,
-        transportState: Map<String, String>,
+        context: AudioTransportContext,
+        transportState: AudioTransportState,
     ): OperationResult<Unit> {
+        if (context.managedDeviceId.isBlank() || context.audioSessionId.isBlank()) {
+            state = AudioPlaybackState.ERROR
+            return OperationResult.Failure(AdminError.Validation)
+        }
+        if (transportState != AudioTransportState.ACTIVE) {
+            state = AudioPlaybackState.ERROR
+            return OperationResult.Failure(AdminError.InvalidState)
+        }
         state = AudioPlaybackState.ERROR
-        return OperationResult.Failure(
-            com.parento.admin.domain.AdminError.Backend,
-        )
+        return OperationResult.Failure(AdminError.Backend)
     }
 
     override suspend fun disconnect() {
@@ -44,7 +55,7 @@ class UnavailableAudioTransport : AudioTransport {
     }
 
     override suspend fun startPlayback(): OperationResult<Unit> =
-        OperationResult.Failure(com.parento.admin.domain.AdminError.Backend)
+        OperationResult.Failure(AdminError.Backend)
 
     override suspend fun stopPlayback() {
         state = AudioPlaybackState.IDLE

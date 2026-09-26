@@ -46,4 +46,5 @@
     <string name="location_device_missing">No managed device was selected.</string>
     <string name="location_open_device">Open location: %1$s</string>
     <string name="location_back">Back to devices</string>
+    <string name="screen_sharing_title">Screen sharing</string>
 </resources>

@@ -94,7 +94,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+        if (!BuildConfig.DEBUG) {
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+        }
 
         val root = FrameLayout(this)
         val column = LinearLayout(this).apply {

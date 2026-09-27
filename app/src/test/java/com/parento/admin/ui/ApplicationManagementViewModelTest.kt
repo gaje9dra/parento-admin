@@ -4,15 +4,27 @@ import com.parento.admin.application.*
 import com.parento.admin.device.CommandStatus
 import com.parento.admin.domain.AdminError
 import com.parento.admin.domain.OperationResult
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ApplicationManagementViewModelTest {
+    private val dispatcher = StandardTestDispatcher()
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
     @Test
-    fun refreshUsesAuthoritativeEnforcementEndpoint() = runTest {
+    fun refreshUsesAuthoritativeEnforcementEndpoint() = runTest(dispatcher) {
+        Dispatchers.setMain(dispatcher)
         val repository = FakeApplicationRepository(
             enforcement = ApplicationSynchronization(
                 desiredPolicyId = "p1",
@@ -37,7 +49,8 @@ class ApplicationManagementViewModelTest {
     }
 
     @Test
-    fun duplicateInventoryRequestsAreSuppressed() = runTest {
+    fun duplicateInventoryRequestsAreSuppressed() = runTest(dispatcher) {
+        Dispatchers.setMain(dispatcher)
         val repository = FakeApplicationRepository()
         val viewModel = ApplicationManagementViewModel(repository) {}
         viewModel.open("device-1", "Device")
@@ -53,7 +66,8 @@ class ApplicationManagementViewModelTest {
     }
 
     @Test
-    fun networkFailureKeepsLastLoadedStateAndMarksItOffline() = runTest {
+    fun networkFailureKeepsLastLoadedStateAndMarksItOffline() = runTest(dispatcher) {
+        Dispatchers.setMain(dispatcher)
         val repository = FakeApplicationRepository()
         val viewModel = ApplicationManagementViewModel(repository) {}
         viewModel.open("device-1", "Device")

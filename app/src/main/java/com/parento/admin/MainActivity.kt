@@ -53,6 +53,16 @@ class MainActivity : AppCompatActivity() {
         )[AudioAccessViewModel::class.java]
     }
 
+    private val applicationManagementViewModel: com.parento.admin.ui.ApplicationManagementViewModel by lazy {
+        ViewModelProvider(
+            this,
+            com.parento.admin.ui.ApplicationManagementViewModelFactory(
+                repository = appContainer.applicationManagementRepository,
+                onSessionExpired = { authViewModel.validateCurrentSession() },
+            ),
+        )[com.parento.admin.ui.ApplicationManagementViewModel::class.java]
+    }
+
     private val screenSharingViewModel: ScreenSharingViewModel by lazy {
         ViewModelProvider(
             this,
@@ -335,7 +345,7 @@ class MainActivity : AppCompatActivity() {
             )
             AdminDestination.LOCATION -> renderLocation()
             AdminDestination.SCREEN_SHARING -> renderScreenSharing()
-            AdminDestination.AUDIO_ACCESS -> renderAudioAccess()
+            AdminDestination.AUDIO_ACCESS -> renderAudioAccess()\n            AdminDestination.APPLICATION_MANAGEMENT -> renderApplicationManagement()
         }
     }
 
@@ -378,6 +388,21 @@ class MainActivity : AppCompatActivity() {
                 onBack = {
                     deviceViewModel.clearSelection()
                     renderDeviceList()
+                },
+            )
+        })
+    }
+
+    private fun renderApplicationManagement() {
+        if (navigator.currentDestination != AdminDestination.APPLICATION_MANAGEMENT) return
+        toolbar.title = "Application management"
+        contentRoot.removeAllViews()
+        contentRoot.addView(FrameLayout(this).also { frame ->
+            ApplicationManagementScreen(frame, applicationManagementViewModel).render(
+                applicationManagementViewModel.uiState.value,
+                onBack = {
+                    navigator.navigate(AdminDestination.DEVICES)
+                    renderDeviceDetailIfSelected()
                 },
             )
         })

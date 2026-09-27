@@ -50,7 +50,7 @@ enum class AdminCommandType(val wireValue: String) {
 
 enum class CommandStatus {
     CREATED, QUEUED, DELIVERING, DELIVERED, ACKNOWLEDGED, RUNNING,
-    SUCCEEDED, FAILED, EXPIRED, CANCELLED, REJECTED
+    SUCCEEDED, FAILED, EXPIRED, CANCELLED, REJECTED, UNKNOWN
 }
 
 data class AdminCommand(

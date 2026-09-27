@@ -370,7 +370,7 @@ class AdminBackendApiClient(
             type = json.optString("type", "UNKNOWN"),
             status = runCatching {
                 com.parento.admin.device.CommandStatus.valueOf(json.optString("status", ""))
-            }.getOrDefault(com.parento.admin.device.CommandStatus.FAILED),
+            }.getOrDefault(com.parento.admin.device.CommandStatus.UNKNOWN),
             createdAt = nullableString(json, "createdAt"),
             deliveryAt = nullableString(json, "deliveryAt"),
             acknowledgedAt = nullableString(json, "acknowledgedAt"),

@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.parento.admin.domain.AdminError
 import com.parento.admin.domain.OperationResult
 import com.parento.admin.policy.*
+import com.parento.admin.device.ManagedDeviceRepository
+import com.parento.admin.device.ManagedDeviceStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,6 +29,7 @@ sealed interface NetworkPolicyDetailUiState {
         val selectedDeviceId: String? = null,
         val stale: Boolean = false,
         val message: String? = null,
+        val devices: List<ManagedDeviceStatus> = emptyList(),
     ) : NetworkPolicyDetailUiState
     data class Error(val message: String, val canRetry: Boolean = true) : NetworkPolicyDetailUiState
 }
@@ -34,6 +37,7 @@ sealed interface NetworkPolicyDetailUiState {
 class NetworkPolicyViewModel(
     private val repository: NetworkPolicyRepository,
     private val onSessionExpired: () -> Unit,
+    private val deviceRepository: ManagedDeviceRepository,
 ) : ViewModel() {
     private val _list = MutableStateFlow<NetworkPolicyListUiState>(NetworkPolicyListUiState.Loading)
     val list: StateFlow<NetworkPolicyListUiState> = _list.asStateFlow()
@@ -58,7 +62,7 @@ class NetworkPolicyViewModel(
         _detail.value = NetworkPolicyDetailUiState.Loading
         viewModelScope.launch {
             when (val r = repository.getPolicy(policyId)) {
-                is OperationResult.Success -> _detail.value = NetworkPolicyDetailUiState.Content(r.value)
+                is OperationResult.Success -> _detail.value = NetworkPolicyDetailUiState.Content(r.value, devices = loadAuthorizedDevices())
                 is OperationResult.Failure -> handleFailure(r.error)
             }
         }
@@ -91,7 +95,7 @@ class NetworkPolicyViewModel(
             when (val r = repository.updatePolicy(policy.copy(rules = normalized))) {
                 is OperationResult.Success -> {
                     val current = _detail.value as? NetworkPolicyDetailUiState.Content
-                    _detail.value = NetworkPolicyDetailUiState.Content(r.value, current?.deviceState, current?.selectedDeviceId)
+                    _detail.value = NetworkPolicyDetailUiState.Content(r.value, current?.deviceState, current?.selectedDeviceId, devices = current?.devices.orEmpty())
                     loadPolicies(refresh = true)
                 }
                 is OperationResult.Failure -> handleFailure(r.error)
@@ -143,6 +147,14 @@ class NetworkPolicyViewModel(
             }
         }
     }
+
+    private suspend fun loadAuthorizedDevices(): List<ManagedDeviceStatus> =
+        when (val r = deviceRepository.listDevices()) {
+            is OperationResult.Success -> r.value.first
+            is OperationResult.Failure -> emptyList()
+        }
+
+    fun refreshDeviceState(deviceId: String) = loadDeviceState(deviceId)
 
     private fun handleFailure(error: AdminError) {
         if (error is AdminError.SessionExpired) onSessionExpired()

@@ -190,7 +190,6 @@ class NetworkPolicyViewModel(
         AdminError.Validation -> "The request was rejected as invalid."
         AdminError.ServerUnavailable -> "Parento server is temporarily unavailable."
         AdminError.RateLimited -> "Too many requests. Please wait and retry."
-        AdminError.RateLimited -> "Too many requests. Please wait and retry."
         else -> "Network policy data is currently unavailable."
     }
 }

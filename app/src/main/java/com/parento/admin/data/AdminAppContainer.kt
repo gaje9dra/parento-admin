@@ -56,6 +56,10 @@ class AdminAppContainer(context: Context) : AutoCloseable {
         ManagedDeviceRepositoryImpl(adminBackendApiClient)
     }
 
+    val applicationManagementRepository: ApplicationManagementRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        ApplicationManagementRepositoryImpl(adminBackendApiClient)
+    }
+
     val audioAccessRepository: AudioAccessRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         AudioAccessRepositoryImpl(adminBackendApiClient)
     }

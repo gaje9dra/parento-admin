@@ -251,11 +251,19 @@ class AdminBackendApiClient(
         }
 
     private fun parseNetworkPolicyDeviceState(data: JSONObject): NetworkPolicyDeviceState {
+        // The backend returns either a complete device-state projection or an
+        // assignment/sync envelope containing synchronization.state + command.
+        val synchronizationEnvelope = data.optJSONObject("synchronization")
+        val synchronization = synchronizationEnvelope?.optJSONObject("state")
+            ?.let(::parseNetworkPolicySync)
+            ?: synchronizationEnvelope?.let(::parseNetworkPolicySync)
+        val command = data.optJSONObject("command")?.let(::parseCommand)
+            ?: synchronizationEnvelope?.optJSONObject("command")?.let(::parseCommand)
         return NetworkPolicyDeviceState(
             effectivePolicy = data.optJSONObject("policy")?.let(::parseNetworkPolicy),
-            synchronization = data.optJSONObject("synchronization")?.let(::parseNetworkPolicySync),
+            synchronization = synchronization,
             capability = data.optJSONObject("capability")?.let(::parseNetworkPolicyCapability),
-            command = data.optJSONObject("command")?.let(::parseCommand),
+            command = command,
         )
     }
 

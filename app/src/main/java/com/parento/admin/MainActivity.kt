@@ -154,6 +154,11 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 launch {
+                    applicationManagementViewModel.uiState.collect {
+                        if (navigator.currentDestination == AdminDestination.APPLICATION_MANAGEMENT) renderApplicationManagement()
+                    }
+                }
+                launch {
                     screenSharingViewModel.uiState.collect {
                         if (navigator.currentDestination == AdminDestination.SCREEN_SHARING) {
                             renderScreenSharing()
@@ -178,6 +183,14 @@ class MainActivity : AppCompatActivity() {
                         navigator.currentDestination == AdminDestination.AUDIO_ACCESS
                     ) {
                         audioAccessViewModel.clearDevice()
+                        navigator.navigate(AdminDestination.DEVICES)
+                        renderDeviceDetailIfSelected()
+                        return
+                    }
+
+                    if (authViewModel.state.value is AuthenticationState.Authenticated &&
+                        navigator.currentDestination == AdminDestination.APPLICATION_MANAGEMENT
+                    ) {
                         navigator.navigate(AdminDestination.DEVICES)
                         renderDeviceDetailIfSelected()
                         return

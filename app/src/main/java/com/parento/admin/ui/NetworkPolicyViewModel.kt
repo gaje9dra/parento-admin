@@ -152,12 +152,22 @@ class NetworkPolicyViewModel(
             when (val r = block(deviceId)) {
                 is OperationResult.Success -> {
                     val c = _detail.value as? NetworkPolicyDetailUiState.Content
-                    if (c != null) _detail.value = c.copy(deviceState = r.value, selectedDeviceId = deviceId, message = "Command requested. Enforcement status will update separately.")
+                    if (c != null) _detail.value = c.copy(deviceState = mergeDeviceState(c.deviceState, r.value), selectedDeviceId = deviceId, message = "Command requested. Enforcement status will update separately.")
                 }
                 is OperationResult.Failure -> handleFailure(r.error)
             }
         }
     }
+
+    private fun mergeDeviceState(current: NetworkPolicyDeviceState?, incoming: NetworkPolicyDeviceState): NetworkPolicyDeviceState =
+        NetworkPolicyDeviceState(
+            effectivePolicy = incoming.effectivePolicy ?: current?.effectivePolicy,
+            synchronization = incoming.synchronization ?: current?.synchronization,
+            capability = incoming.capability ?: current?.capability,
+            command = incoming.command ?: current?.command,
+            cachedAtEpochMillis = incoming.cachedAtEpochMillis ?: current?.cachedAtEpochMillis,
+            offline = incoming.offline || (current?.offline == true),
+        )
 
     private suspend fun loadAuthorizedDevices(): List<ManagedDeviceStatus> =
         when (val r = deviceRepository.listDevices()) {

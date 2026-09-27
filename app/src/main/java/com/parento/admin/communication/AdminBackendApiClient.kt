@@ -21,6 +21,8 @@ import com.parento.admin.security.SessionStore
 import com.parento.admin.screensharing.ScreenSharingSession
 import com.parento.admin.screensharing.ScreenSharingSessionStatus
 import com.parento.admin.screensharing.ScreenTransportState
+import com.parento.admin.audio.AudioAccessSession
+import com.parento.admin.audio.AudioAccessSessionStatus
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -146,6 +148,32 @@ class AdminBackendApiClient(
     ): OperationResult<ScreenSharingSession> =
         execute("POST", "/api/v1/screen-sessions/" + sessionId + "/stop") { root ->
             parseScreenSharingSession(root.getJSONObject("data").getJSONObject("session"))
+        }
+
+    suspend fun createAudioAccessSession(
+        deviceId: String,
+        correlationId: String,
+    ): OperationResult<AudioAccessSession> =
+        execute(
+            "POST",
+            "/api/v1/devices/" + deviceId + "/audio-sessions",
+            JSONObject().apply { put("correlationId", correlationId) }.toString(),
+        ) { root ->
+            parseAudioAccessSession(root.getJSONObject("data").getJSONObject("session"))
+        }
+
+    suspend fun getAudioAccessSession(
+        sessionId: String,
+    ): OperationResult<AudioAccessSession> =
+        execute("GET", "/api/v1/audio-sessions/" + sessionId) { root ->
+            parseAudioAccessSession(root.getJSONObject("data").getJSONObject("session"))
+        }
+
+    suspend fun stopAudioAccessSession(
+        sessionId: String,
+    ): OperationResult<AudioAccessSession> =
+        execute("POST", "/api/v1/audio-sessions/" + sessionId + "/stop") { root ->
+            parseAudioAccessSession(root.getJSONObject("data").getJSONObject("session"))
         }
 
     suspend fun createFutureCommand(deviceId: String, idempotencyKey: String): OperationResult<AdminCommand> =
@@ -293,6 +321,31 @@ class AdminBackendApiClient(
                 else -> ScreenTransportState.UNAVAILABLE
             },
             transportStateDetails = details,
+        )
+    }
+
+    private fun parseAudioAccessSession(json: JSONObject): AudioAccessSession {
+        val transport = json.optJSONObject("transportState")
+        val details = linkedMapOf<String, String>()
+        transport?.keys()?.forEach { key ->
+            if (!transport.isNull(key)) {
+                val value = transport.optString(key)
+                if (value.length <= 128) details[key] = value
+            }
+        }
+        return AudioAccessSession(
+            sessionId = json.getString("sessionId"),
+            managedDeviceId = json.getString("deviceId"),
+            status = AudioAccessSessionStatus.valueOf(json.getString("status")),
+            createdAt = json.getString("createdAt"),
+            authorizedAt = nullableString(json, "authorizedAt"),
+            startedAt = nullableString(json, "startedAt"),
+            stoppedAt = nullableString(json, "stoppedAt"),
+            expiresAt = json.getString("expiresAt"),
+            lastActivityAt = json.getString("lastActivityAt"),
+            terminationReason = nullableString(json, "terminationReason"),
+            correlationId = json.getString("correlationId"),
+            transportState = details,
         )
     }
 

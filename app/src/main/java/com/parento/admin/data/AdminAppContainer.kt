@@ -11,6 +11,9 @@ import com.parento.admin.security.SecureSessionStore
 import com.parento.admin.location.ContractPendingDeviceLocationRepository
 import com.parento.admin.location.DeviceLocationRepository
 import com.parento.admin.screensharing.ScreenSharingRepository
+import com.parento.admin.audio.AudioAccessRepository
+import com.parento.admin.audio.AudioTransport
+import com.parento.admin.audio.UnavailableAudioTransport
 
 class AdminAppContainer(context: Context) : AutoCloseable {
     private val applicationContext = context.applicationContext
@@ -50,6 +53,19 @@ class AdminAppContainer(context: Context) : AutoCloseable {
 
     val managedDeviceRepository: ManagedDeviceRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         ManagedDeviceRepositoryImpl(adminBackendApiClient)
+    }
+
+    val audioAccessRepository: AudioAccessRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        AudioAccessRepositoryImpl(adminBackendApiClient)
+    }
+
+    /**
+     * Phase 10.1 exposes audio session control/signaling metadata but no
+     * production media-byte protocol. Keep the Admin transport fail-closed
+     * until an approved transport contract exists.
+     */
+    val audioTransport: AudioTransport by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        UnavailableAudioTransport()
     }
 
     val screenSharingRepository: ScreenSharingRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {

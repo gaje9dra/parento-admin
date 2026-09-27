@@ -46,6 +46,8 @@ data class ManagedDeviceStatus(
 
 enum class AdminCommandType(val wireValue: String) {
     FUTURE_COMMAND("FUTURE_COMMAND"),
+    SYNC_NETWORK_POLICY("SYNC_NETWORK_POLICY"),
+    REQUEST_NETWORK_POLICY_STATUS("REQUEST_NETWORK_POLICY_STATUS"),
 }
 
 enum class CommandStatus {

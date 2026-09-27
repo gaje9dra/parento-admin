@@ -23,6 +23,7 @@ import com.parento.admin.screensharing.ScreenSharingSessionStatus
 import com.parento.admin.screensharing.ScreenTransportState
 import com.parento.admin.audio.AudioAccessSession
 import com.parento.admin.audio.AudioAccessSessionStatus
+import com.parento.admin.policy.*
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -197,6 +198,120 @@ class AdminBackendApiClient(
         execute("POST", "/api/v1/devices/" + deviceId + "/commands/" + commandId + "/cancel") { root ->
             parseCommand(root.getJSONObject("data").getJSONObject("command"))
         }
+
+    suspend fun listNetworkPolicies(cursor: String? = null): OperationResult<Pair<List<NetworkPolicy>, String?>> {
+        val path = buildString {
+            append("/api/v1/admin/network-policies?limit=50")
+            if (!cursor.isNullOrBlank()) append("&cursor=").append(java.net.URLEncoder.encode(cursor, "UTF-8"))
+        }
+        return execute("GET", path) { root ->
+            val data = root.getJSONObject("data")
+            val items = data.getJSONArray("policies")
+            buildList { for (i in 0 until items.length()) add(parseNetworkPolicy(items.getJSONObject(i))) } to
+                data.optString("nextCursor").takeIf { it.isNotBlank() && it != "null" }
+        }
+    }
+
+    suspend fun getNetworkPolicy(policyId: String): OperationResult<NetworkPolicy> =
+        execute("GET", "/api/v1/admin/network-policies/" + policyId) {
+            parseNetworkPolicy(it.getJSONObject("data").getJSONObject("policy"))
+        }
+
+    suspend fun createNetworkPolicy(name: String, description: String?, rules: List<NetworkPolicyRule>): OperationResult<NetworkPolicy> =
+        execute("POST", "/api/v1/admin/network-policies", JSONObject().apply {
+            put("name", name.trim()); put("description", description); put("rules", rulesJson(rules))
+        }.toString()) { parseNetworkPolicy(it.getJSONObject("data").getJSONObject("policy")) }
+
+    suspend fun updateNetworkPolicy(policy: NetworkPolicy): OperationResult<NetworkPolicy> =
+        execute("PATCH", "/api/v1/admin/network-policies/" + policy.id, JSONObject().apply {
+            put("name", policy.name.trim()); put("description", policy.description); put("status", policy.status.name)
+            put("expectedVersion", policy.version); put("rules", rulesJson(policy.rules))
+        }.toString()) { parseNetworkPolicy(it.getJSONObject("data").getJSONObject("policy")) }
+
+    suspend fun getNetworkPolicyDeviceState(deviceId: String): OperationResult<NetworkPolicyDeviceState> =
+        execute("GET", "/api/v1/admin/devices/" + deviceId + "/network-policy") { parseNetworkPolicyDeviceState(it.getJSONObject("data")) }
+
+    suspend fun assignNetworkPolicy(deviceId: String, policyId: String): OperationResult<NetworkPolicyDeviceState> =
+        execute("POST", "/api/v1/admin/devices/" + deviceId + "/network-policy", JSONObject().put("policyId", policyId).toString()) {
+            parseNetworkPolicyDeviceState(it.getJSONObject("data"))
+        }
+
+    suspend fun removeNetworkPolicy(deviceId: String, policyId: String): OperationResult<NetworkPolicyDeviceState> =
+        execute("DELETE", "/api/v1/admin/devices/" + deviceId + "/network-policy", JSONObject().put("policyId", policyId).toString()) {
+            parseNetworkPolicyDeviceState(it.getJSONObject("data"))
+        }
+
+    suspend fun requestNetworkPolicySync(deviceId: String): OperationResult<NetworkPolicyDeviceState> =
+        execute("POST", "/api/v1/admin/devices/" + deviceId + "/network-policy/sync") { parseNetworkPolicyDeviceState(it.getJSONObject("data")) }
+
+    suspend fun requestNetworkPolicyStatus(deviceId: String): OperationResult<NetworkPolicyDeviceState> =
+        execute("POST", "/api/v1/admin/devices/" + deviceId + "/network-policy/status/request") {
+            val data = it.getJSONObject("data")
+            NetworkPolicyDeviceState(null, null, null, parseCommand(data.getJSONObject("command")))
+        }
+
+    private fun parseNetworkPolicyDeviceState(data: JSONObject): NetworkPolicyDeviceState {
+        return NetworkPolicyDeviceState(
+            effectivePolicy = data.optJSONObject("policy")?.let(::parseNetworkPolicy),
+            synchronization = data.optJSONObject("synchronization")?.let(::parseNetworkPolicySync),
+            capability = data.optJSONObject("capability")?.let(::parseNetworkPolicyCapability),
+            command = data.optJSONObject("command")?.let(::parseCommand),
+        )
+    }
+
+    private fun parseNetworkPolicy(json: JSONObject): NetworkPolicy {
+        val rulesJson = json.optJSONArray("rules") ?: org.json.JSONArray()
+        val rules = buildList {
+            for (i in 0 until rulesJson.length()) {
+                val r = rulesJson.getJSONObject(i)
+                add(NetworkPolicyRule(
+                    id = r.optString("id").takeIf { it.isNotBlank() },
+                    domain = r.getString("domain"),
+                    action = NetworkRuleAction.valueOf(r.getString("action")),
+                    enabled = r.optBoolean("enabled", true),
+                ))
+            }
+        }
+        return NetworkPolicy(
+            id = json.getString("id"),
+            adminId = json.optString("adminId"),
+            name = json.getString("name"),
+            description = if (json.isNull("description")) null else json.optString("description"),
+            status = NetworkPolicyStatus.valueOf(json.optString("status", "ACTIVE")),
+            version = json.getLong("version"),
+            createdAt = json.optString("createdAt"),
+            updatedAt = json.optString("updatedAt"),
+            createdBy = json.optString("createdBy"),
+            updatedBy = json.optString("updatedBy"),
+            rules = rules,
+        )
+    }
+
+    private fun parseNetworkPolicySync(json: JSONObject) = NetworkPolicySyncState(
+        managedDeviceId = json.getString("managedDeviceId"),
+        desiredPolicyId = json.optString("desiredPolicyId").takeIf { it.isNotBlank() && it != "null" },
+        desiredPolicyVersion = if (json.isNull("desiredPolicyVersion")) null else json.optLong("desiredPolicyVersion"),
+        reportedPolicyId = json.optString("reportedPolicyId").takeIf { it.isNotBlank() && it != "null" },
+        reportedPolicyVersion = if (json.isNull("reportedPolicyVersion")) null else json.optLong("reportedPolicyVersion"),
+        status = NetworkEnforcementStatus.valueOf(json.optString("status", "UNKNOWN")),
+        lastRequestedAt = json.optString("lastRequestedAt").takeIf { it.isNotBlank() && it != "null" },
+        lastReportedAt = json.optString("lastReportedAt").takeIf { it.isNotBlank() && it != "null" },
+        lastErrorCode = json.optString("lastErrorCode").takeIf { it.isNotBlank() && it != "null" },
+        updatedAt = json.optString("updatedAt"),
+    )
+
+    private fun parseNetworkPolicyCapability(json: JSONObject) = NetworkPolicyCapability(
+        managedDeviceId = json.getString("managedDeviceId"),
+        supported = json.getBoolean("supported"),
+        mode = NetworkCapabilityMode.valueOf(json.optString("mode", "UNKNOWN")),
+        capabilityVersion = if (json.isNull("capabilityVersion")) null else json.optLong("capabilityVersion"),
+        reportedAt = json.optString("reportedAt"),
+        updatedAt = json.optString("updatedAt"),
+    )
+
+    private fun rulesJson(rules: List<NetworkPolicyRule>) = org.json.JSONArray().apply {
+        rules.forEach { put(JSONObject().put("domain", it.domain).put("action", it.action.name).put("enabled", it.enabled)) }
+    }
 
     private suspend fun <T> execute(
         method: String,
@@ -377,6 +492,7 @@ class AdminBackendApiClient(
             status == 404 && code == "DEVICE_NOT_FOUND" -> AdminError.DeviceNotFound("")
             status == 404 -> AdminError.Backend
             status == 409 -> AdminError.InvalidState
+            status == 429 -> AdminError.RateLimited
             status >= 500 -> AdminError.ServerUnavailable
             status == 400 -> AdminError.Validation
             else -> AdminError.Backend

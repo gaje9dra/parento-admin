@@ -11,6 +11,8 @@ sealed interface AdminError {
     data object SessionRevoked : AdminError
     data object Validation : AdminError
     data object ServerUnavailable : AdminError
+    data object RateLimited : AdminError
+    data object RateLimited : AdminError
     data object AuthenticationRateLimited : AdminError
     data object UnknownAuthentication : AdminError
     data object EnrollmentNotFound : AdminError

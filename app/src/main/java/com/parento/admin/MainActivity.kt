@@ -31,6 +31,9 @@ import com.parento.admin.ui.DeviceManagementViewModelFactory
 import com.parento.admin.ui.LocationScreen
 import com.parento.admin.ui.LocationViewModel
 import com.parento.admin.ui.LocationViewModelFactory
+import com.parento.admin.ui.NetworkPolicyScreen
+import com.parento.admin.ui.NetworkPolicyViewModel
+import com.parento.admin.ui.NetworkPolicyViewModelFactory
 import com.parento.admin.ui.ScreenSharingScreen
 import com.parento.admin.ui.ScreenSharingViewModel
 import com.parento.admin.ui.ScreenSharingViewModelFactory
@@ -75,6 +78,17 @@ class MainActivity : AppCompatActivity() {
 
     private val homeViewModel: AdminHomeViewModel by lazy {
         ViewModelProvider(this)[AdminHomeViewModel::class.java]
+    }
+
+    private val networkPolicyViewModel: NetworkPolicyViewModel by lazy {
+        ViewModelProvider(
+            this,
+            NetworkPolicyViewModelFactory(
+                repository = appContainer.networkPolicyRepository,
+                deviceRepository = appContainer.managedDeviceRepository,
+                onSessionExpired = { authViewModel.validateCurrentSession() },
+            ),
+        )[NetworkPolicyViewModel::class.java]
     }
 
     private val deviceViewModel: DeviceManagementViewModel by lazy {
@@ -128,6 +142,16 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 launch {
+                    networkPolicyViewModel.list.collect {
+                        if (navigator.currentDestination == AdminDestination.POLICIES) renderPolicyList()
+                    }
+                }
+                launch {
+                    networkPolicyViewModel.detail.collect {
+                        if (navigator.currentDestination == AdminDestination.POLICY_DETAILS) renderPolicyDetail()
+                    }
+                }
+                launch {
                     deviceViewModel.listState.collect {
                         if (navigator.currentDestination == AdminDestination.DEVICES &&
                             deviceViewModel.detailState.value is com.parento.admin.ui.DeviceDetailUiState.Idle
@@ -164,6 +188,14 @@ class MainActivity : AppCompatActivity() {
             this,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
+                    if (authViewModel.state.value is AuthenticationState.Authenticated &&
+                        navigator.currentDestination == AdminDestination.POLICY_DETAILS
+                    ) {
+                        navigator.navigate(AdminDestination.POLICIES)
+                        renderPolicyList()
+                        return
+                    }
+
                     if (authViewModel.state.value is AuthenticationState.Authenticated &&
                         navigator.currentDestination == AdminDestination.AUDIO_ACCESS
                     ) {
@@ -325,10 +357,8 @@ class MainActivity : AppCompatActivity() {
                     deviceViewModel.loadDevices()
                 }
             }
-            AdminDestination.POLICIES -> renderPlaceholder(
-                R.string.nav_policies,
-                R.string.policies_placeholder,
-            )
+            AdminDestination.POLICIES -> { toolbar.title = getString(R.string.nav_policies); renderPolicyList() }
+            AdminDestination.POLICY_DETAILS -> { toolbar.title = getString(R.string.nav_policies); renderPolicyDetail() }
             AdminDestination.SETTINGS -> renderPlaceholder(
                 R.string.nav_settings,
                 R.string.settings_placeholder,
@@ -337,6 +367,29 @@ class MainActivity : AppCompatActivity() {
             AdminDestination.SCREEN_SHARING -> renderScreenSharing()
             AdminDestination.AUDIO_ACCESS -> renderAudioAccess()
         }
+    }
+
+    private fun renderPolicyList() {
+        contentRoot.removeAllViews()
+        contentRoot.addView(FrameLayout(this).also { frame ->
+            NetworkPolicyScreen(frame, networkPolicyViewModel).renderList(networkPolicyViewModel.list.value) { id ->
+                navigator.navigate(AdminDestination.POLICY_DETAILS)
+                if (id == "new") networkPolicyViewModel.startCreate() else networkPolicyViewModel.open(id)
+                renderPolicyDetail()
+            }
+        })
+        if (networkPolicyViewModel.list.value is com.parento.admin.ui.NetworkPolicyListUiState.Loading) networkPolicyViewModel.loadPolicies()
+    }
+
+    private fun renderPolicyDetail() {
+        if (navigator.currentDestination != AdminDestination.POLICY_DETAILS) return
+        contentRoot.removeAllViews()
+        contentRoot.addView(FrameLayout(this).also { frame ->
+            NetworkPolicyScreen(frame, networkPolicyViewModel).renderDetail(networkPolicyViewModel.detail.value) {
+                navigator.navigate(AdminDestination.POLICIES)
+                renderPolicyList()
+            }
+        })
     }
 
     private fun renderDeviceList() {

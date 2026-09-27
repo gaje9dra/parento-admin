@@ -4,6 +4,7 @@ enum class AdminDestination {
     HOME,
     DEVICES,
     POLICIES,
+    POLICY_DETAILS,
     SETTINGS,
     LOCATION,
     SCREEN_SHARING,

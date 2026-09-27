@@ -189,6 +189,14 @@ class MainActivity : AppCompatActivity() {
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
                     if (authViewModel.state.value is AuthenticationState.Authenticated &&
+                        navigator.currentDestination == AdminDestination.POLICY_DETAILS
+                    ) {
+                        navigator.navigate(AdminDestination.POLICIES)
+                        renderPolicyList()
+                        return
+                    }
+
+                    if (authViewModel.state.value is AuthenticationState.Authenticated &&
                         navigator.currentDestination == AdminDestination.AUDIO_ACCESS
                     ) {
                         audioAccessViewModel.clearDevice()

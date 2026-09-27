@@ -345,7 +345,8 @@ class MainActivity : AppCompatActivity() {
             )
             AdminDestination.LOCATION -> renderLocation()
             AdminDestination.SCREEN_SHARING -> renderScreenSharing()
-            AdminDestination.AUDIO_ACCESS -> renderAudioAccess()\n            AdminDestination.APPLICATION_MANAGEMENT -> renderApplicationManagement()
+            AdminDestination.AUDIO_ACCESS -> renderAudioAccess()
+            AdminDestination.APPLICATION_MANAGEMENT -> renderApplicationManagement()
         }
     }
 
@@ -384,6 +385,11 @@ class MainActivity : AppCompatActivity() {
                     audioAccessViewModel.bindDevice(status)
                     navigator.navigate(AdminDestination.AUDIO_ACCESS)
                     renderAudioAccess()
+                },
+                onStartApplicationManagement = { status ->
+                    applicationManagementViewModel.open(status.deviceId, status.displayName)
+                    navigator.navigate(AdminDestination.APPLICATION_MANAGEMENT)
+                    renderApplicationManagement()
                 },
                 onBack = {
                     deviceViewModel.clearSelection()

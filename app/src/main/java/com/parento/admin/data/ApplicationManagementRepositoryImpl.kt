@@ -13,6 +13,7 @@ class ApplicationManagementRepositoryImpl(private val api: AdminBackendApiClient
     override suspend fun createPolicy(name: String, description: String?, rules: List<ApplicationPolicyRule>) = api.createApplicationPolicy(name, description, rules)
     override suspend fun updatePolicy(policy: ApplicationPolicy, expectedVersion: Int) = api.updateApplicationPolicy(policy, expectedVersion)
     override suspend fun getPolicyState(deviceId: String) = api.getApplicationPolicyState(deviceId)
+    override suspend fun getEnforcementStatus(deviceId: String) = api.getApplicationEnforcementStatus(deviceId)
     override suspend fun assignPolicy(deviceId: String, policyId: String) = api.assignApplicationPolicy(deviceId, policyId)
     override suspend fun removePolicy(deviceId: String, policyId: String) = api.removeApplicationPolicy(deviceId, policyId)
     override suspend fun syncPolicy(deviceId: String) = api.syncApplicationPolicy(deviceId)

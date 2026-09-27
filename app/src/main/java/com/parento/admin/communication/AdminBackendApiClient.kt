@@ -228,8 +228,79 @@ class AdminBackendApiClient(
             put("expectedVersion", policy.version); put("rules", rulesJson(policy.rules))
         }.toString()) { parseNetworkPolicy(it.getJSONObject("data").getJSONObject("policy")) }
 
-    suspend fun getNetworkPolicyDeviceState(deviceId: String): OperationResult<NetworkPolicyDeviceState> =
-        execute("GET", "/api/v1/admin/devices/" + deviceId + "/network-policy") { parseNetworkPolicyDeviceState(it.getJSONObject("data")) }
+    suspend fun getNetworkPolicyDeviceState(deviceId: String): OperationResult<NetworkPolicyDeviceState> {
+        return when (val effective = execute("GET", "/api/v1/admin/devices/" + deviceId + "/network-policy") {
+            parseEffectiveNetworkPolicy(it.getJSONObject("data"))
+        }) {
+            is OperationResult.Failure -> effective
+            is OperationResult.Success -> {
+                when (val status = requestNetworkPolicyStatusSnapshot(deviceId)) {
+                    is OperationResult.Failure -> status
+                    is OperationResult.Success -> when (val capability = requestNetworkPolicyCapabilitySnapshot(deviceId)) {
+                        is OperationResult.Failure -> capability
+                        is OperationResult.Success -> OperationResult.Success(
+                            effective.value.copy(
+                                synchronization = status.value,
+                                capability = capability.value,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun requestNetworkPolicyStatusSnapshot(deviceId: String): OperationResult<NetworkPolicySyncState?> =
+        execute("GET", "/api/v1/admin/devices/" + deviceId + "/network-policy/status") {
+            val sync = it.getJSONObject("data").optJSONObject("synchronization")
+            sync?.let(::parseNetworkPolicySync)
+        }
+
+    private suspend fun requestNetworkPolicyCapabilitySnapshot(deviceId: String): OperationResult<NetworkPolicyCapability?> =
+        execute("GET", "/api/v1/admin/devices/" + deviceId + "/network-policy/capability") {
+            val capability = it.getJSONObject("data").optJSONObject("capability")
+            capability?.let(::parseNetworkPolicyCapability)
+        }
+
+    private fun parseEffectiveNetworkPolicy(data: JSONObject): NetworkPolicyDeviceState =
+        NetworkPolicyDeviceState(
+            effectivePolicy = data.optJSONObject("policy")?.let { policy ->
+                parseEffectivePolicy(policy)
+            },
+            synchronization = null,
+            capability = null,
+            command = null,
+        )
+
+    private fun parseEffectivePolicy(json: JSONObject): NetworkPolicy {
+        val rulesJson = json.optJSONArray("rules") ?: org.json.JSONArray()
+        val rules = buildList {
+            for (i in 0 until rulesJson.length()) {
+                val r = rulesJson.getJSONObject(i)
+                add(
+                    NetworkPolicyRule(
+                        id = r.optString("id").takeIf { it.isNotBlank() },
+                        domain = r.getString("domain"),
+                        action = NetworkRuleAction.valueOf(r.getString("action")),
+                        enabled = r.optBoolean("enabled", true),
+                    ),
+                )
+            }
+        }
+        return NetworkPolicy(
+            id = json.getString("id"),
+            adminId = "",
+            name = "",
+            description = null,
+            status = NetworkPolicyStatus.ACTIVE,
+            version = json.getLong("version"),
+            createdAt = "",
+            updatedAt = "",
+            createdBy = "",
+            updatedBy = "",
+            rules = rules,
+        )
+    }
 
     suspend fun assignNetworkPolicy(deviceId: String, policyId: String): OperationResult<NetworkPolicyDeviceState> =
         execute("POST", "/api/v1/admin/devices/" + deviceId + "/network-policy", JSONObject().put("policyId", policyId).toString()) {

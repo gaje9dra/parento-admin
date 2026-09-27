@@ -198,6 +198,175 @@ class AdminBackendApiClient(
             parseCommand(root.getJSONObject("data").getJSONObject("command"))
         }
 
+
+    suspend fun listApplicationInventory(deviceId: String, cursor: String? = null): OperationResult<com.parento.admin.application.ApplicationInventoryPage> {
+        val path = buildString {
+            append("/api/v1/admin/devices/").append(deviceId).append("/applications?limit=100")
+            if (!cursor.isNullOrBlank()) append("&cursor=").append(java.net.URLEncoder.encode(cursor, "UTF-8"))
+        }
+        return execute("GET", path) { root ->
+            val data = root.getJSONObject("data")
+            val freshness = inventoryFreshness(data.optString("freshness"))
+            val items = data.optJSONArray("applications") ?: org.json.JSONArray()
+            val apps = buildList {
+                for (i in 0 until items.length()) {
+                    val item = items.getJSONObject(i)
+                    add(com.parento.admin.application.ApplicationInventoryItem(
+                        deviceId = deviceId,
+                        packageName = item.getString("packageName"),
+                        displayName = nullableString(item, "label"),
+                        versionName = nullableString(item, "versionName"),
+                        versionCode = nullableLong(item, "versionCode"),
+                        installState = item.optString("installState", "UNKNOWN"),
+                        enabled = if (item.has("enabled") && !item.isNull("enabled")) item.getBoolean("enabled") else null,
+                        observedAt = nullableString(data, "observedAt"),
+                        receivedAt = nullableString(data, "receivedAt"),
+                        freshness = freshness,
+                    ))
+                }
+            }
+            com.parento.admin.application.ApplicationInventoryPage(deviceId, apps, nullableString(data, "nextCursor"), nullableString(data, "observedAt"), nullableString(data, "receivedAt"), freshness)
+        }
+    }
+
+    suspend fun getApplicationInventoryItem(deviceId: String, packageName: String): OperationResult<com.parento.admin.application.ApplicationInventoryItem> =
+        execute("GET", "/api/v1/admin/devices/" + deviceId + "/applications/" + java.net.URLEncoder.encode(packageName, "UTF-8")) { root ->
+            val item = root.getJSONObject("data").getJSONObject("application")
+            com.parento.admin.application.ApplicationInventoryItem(
+                deviceId = deviceId,
+                packageName = item.getString("packageName"),
+                displayName = nullableString(item, "label"),
+                versionName = nullableString(item, "versionName"),
+                versionCode = nullableLong(item, "versionCode"),
+                installState = item.optString("installState", "UNKNOWN"),
+                enabled = if (item.has("enabled") && !item.isNull("enabled")) item.getBoolean("enabled") else null,
+                observedAt = nullableString(item, "lastObservedAt"),
+                receivedAt = nullableString(item, "lastReceivedAt"),
+                freshness = com.parento.admin.application.InventoryFreshness.UNKNOWN,
+            )
+        }
+
+    suspend fun requestApplicationInventory(deviceId: String): OperationResult<String> =
+        execute("POST", "/api/v1/admin/devices/" + deviceId + "/applications/inventory/request") { root ->
+            root.getJSONObject("data").getJSONObject("command").getString("id")
+        }
+
+    suspend fun listApplicationPolicies(cursor: String? = null): OperationResult<Pair<List<com.parento.admin.application.ApplicationPolicy>, String?>> {
+        val path = buildString {
+            append("/api/v1/admin/application-policies?limit=100")
+            if (!cursor.isNullOrBlank()) append("&cursor=").append(java.net.URLEncoder.encode(cursor, "UTF-8"))
+        }
+        return execute("GET", path) { root ->
+            val data = root.getJSONObject("data")
+            val policies = data.optJSONArray("policies") ?: org.json.JSONArray()
+            buildList<com.parento.admin.application.ApplicationPolicy> {
+                for (i in 0 until policies.length()) add(parseApplicationPolicy(policies.getJSONObject(i)))
+            } to nullableString(data, "nextCursor")
+        }
+    }
+
+    suspend fun getApplicationPolicy(policyId: String): OperationResult<com.parento.admin.application.ApplicationPolicy> =
+        execute("GET", "/api/v1/admin/application-policies/" + policyId) { root ->
+            parseApplicationPolicy(root.getJSONObject("data").getJSONObject("policy"))
+        }
+
+    suspend fun createApplicationPolicy(name: String, description: String?, rules: List<com.parento.admin.application.ApplicationPolicyRule>): OperationResult<com.parento.admin.application.ApplicationPolicy> =
+        execute("POST", "/api/v1/admin/application-policies", JSONObject().apply {
+            put("name", name)
+            if (description == null) put("description", JSONObject.NULL) else put("description", description)
+            put("rules", org.json.JSONArray().apply { rules.forEach { put(JSONObject().put("packageName", it.packageName).put("action", it.action.name)) } })
+        }.toString()) { root -> parseApplicationPolicy(root.getJSONObject("data").getJSONObject("policy")) }
+
+    suspend fun updateApplicationPolicy(policy: com.parento.admin.application.ApplicationPolicy, expectedVersion: Int): OperationResult<com.parento.admin.application.ApplicationPolicy> =
+        execute("PATCH", "/api/v1/admin/application-policies/" + policy.id, JSONObject().apply {
+            put("name", policy.name)
+            if (policy.description == null) put("description", JSONObject.NULL) else put("description", policy.description)
+            put("status", policy.status.name)
+            put("expectedVersion", expectedVersion)
+            put("rules", org.json.JSONArray().apply { policy.rules.forEach { put(JSONObject().put("packageName", it.packageName).put("action", it.action.name)) } })
+        }.toString()) { root -> parseApplicationPolicy(root.getJSONObject("data").getJSONObject("policy")) }
+
+    suspend fun getApplicationPolicyState(deviceId: String): OperationResult<com.parento.admin.application.ApplicationPolicyState> =
+        execute("GET", "/api/v1/admin/devices/" + deviceId + "/application-policy") { root -> parseApplicationPolicyState(root.getJSONObject("data")) }
+
+    suspend fun assignApplicationPolicy(deviceId: String, policyId: String): OperationResult<com.parento.admin.application.ApplicationPolicyState> =
+        execute("POST", "/api/v1/admin/devices/" + deviceId + "/application-policy", JSONObject().put("policyId", policyId).toString()) { root -> parseApplicationPolicyState(root.getJSONObject("data")) }
+
+    suspend fun removeApplicationPolicy(deviceId: String, policyId: String): OperationResult<com.parento.admin.application.ApplicationPolicyState> =
+        execute("DELETE", "/api/v1/admin/devices/" + deviceId + "/application-policy", JSONObject().put("policyId", policyId).toString()) { root -> parseApplicationPolicyState(root.getJSONObject("data")) }
+
+    suspend fun syncApplicationPolicy(deviceId: String): OperationResult<com.parento.admin.application.ApplicationSynchronization?> =
+        execute("POST", "/api/v1/admin/devices/" + deviceId + "/application-policy/sync") { root ->
+            parseSynchronization(root.getJSONObject("data").optJSONObject("synchronization"))
+        }
+
+    suspend fun getApplicationEnforcementStatus(deviceId: String): OperationResult<com.parento.admin.application.ApplicationSynchronization?> =
+        execute("GET", "/api/v1/admin/devices/" + deviceId + "/application-policy/status") { root ->
+            parseSynchronization(root.getJSONObject("data").optJSONObject("synchronization"))
+        }
+
+    private fun parseApplicationPolicy(json: JSONObject): com.parento.admin.application.ApplicationPolicy {
+        val rules = json.optJSONArray("rules") ?: org.json.JSONArray()
+        return com.parento.admin.application.ApplicationPolicy(
+            id = json.getString("id"),
+            name = json.getString("name"),
+            description = nullableString(json, "description"),
+            status = com.parento.admin.application.PolicyStatus.valueOf(json.optString("status", "ACTIVE")),
+            version = json.optInt("version", 1),
+            createdAt = json.optString("createdAt", ""),
+            updatedAt = json.optString("updatedAt", ""),
+            createdBy = nullableString(json, "createdBy"),
+            updatedBy = nullableString(json, "updatedBy"),
+            rules = buildList {
+                for (i in 0 until rules.length()) {
+                    val r = rules.getJSONObject(i)
+                    add(com.parento.admin.application.ApplicationPolicyRule(r.getString("packageName"), com.parento.admin.application.PolicyAction.valueOf(r.getString("action"))))
+                }
+            },
+        )
+    }
+
+    private fun parseApplicationPolicyState(data: JSONObject): com.parento.admin.application.ApplicationPolicyState {
+        val policy = data.optJSONObject("policy")?.let(::parseApplicationPolicy)
+        val assignmentJson = data.optJSONObject("assignment")
+        val assignment = assignmentJson?.let {
+            com.parento.admin.application.PolicyAssignment(
+                deviceId = it.optString("deviceId"),
+                policyId = nullableString(it, "policyId"),
+                policyVersion = if (it.has("policyVersion") && !it.isNull("policyVersion")) it.getInt("policyVersion") else null,
+                assignedAt = nullableString(it, "assignedAt"),
+                updatedAt = nullableString(it, "updatedAt"),
+            )
+        }
+        val sync = parseSynchronization(data.optJSONObject("synchronization"))
+        return com.parento.admin.application.ApplicationPolicyState(policy, assignment, sync)
+    }
+
+    private fun parseSynchronization(json: JSONObject?): com.parento.admin.application.ApplicationSynchronization? =
+        json?.let {
+            com.parento.admin.application.ApplicationSynchronization(
+                desiredPolicyId = nullableString(it, "desiredPolicyId"),
+                desiredPolicyVersion = if (it.has("desiredPolicyVersion") && !it.isNull("desiredPolicyVersion")) it.getInt("desiredPolicyVersion") else null,
+                reportedPolicyId = nullableString(it, "reportedPolicyId"),
+                reportedPolicyVersion = if (it.has("reportedPolicyVersion") && !it.isNull("reportedPolicyVersion")) it.getInt("reportedPolicyVersion") else null,
+                status = com.parento.admin.application.EnforcementStatus.valueOf(it.optString("status", "UNKNOWN")),
+                lastRequestedAt = nullableString(it, "lastRequestedAt"),
+                lastReportedAt = nullableString(it, "lastReportedAt"),
+                updatedAt = nullableString(it, "updatedAt"),
+                errorCode = nullableString(it, "errorCode"),
+            )
+        }
+
+    private fun inventoryFreshness(value: String) = when (value) {
+        "FRESH" -> com.parento.admin.application.InventoryFreshness.FRESH
+        "STALE" -> com.parento.admin.application.InventoryFreshness.STALE
+        "VERY_STALE" -> com.parento.admin.application.InventoryFreshness.VERY_STALE
+        "NEVER_REPORTED" -> com.parento.admin.application.InventoryFreshness.NEVER_REPORTED
+        "DISCONNECTED" -> com.parento.admin.application.InventoryFreshness.DISCONNECTED
+        "REVOKED" -> com.parento.admin.application.InventoryFreshness.REVOKED
+        else -> com.parento.admin.application.InventoryFreshness.UNKNOWN
+    }
+
     private suspend fun <T> execute(
         method: String,
         path: String,

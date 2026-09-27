@@ -50,6 +50,7 @@ class DeviceManagementScreen(
         onBack: () -> Unit,
         onStartScreenSharing: (ManagedDeviceStatus) -> Unit,
         onStartAudioAccess: (ManagedDeviceStatus) -> Unit,
+        onStartApplicationManagement: (ManagedDeviceStatus) -> Unit,
     ) {
         root.removeAllViews()
         val column = column()
@@ -70,6 +71,7 @@ class DeviceManagementScreen(
                 renderCommand(column, state)
                 renderScreenSharing(column, state.status, onStartScreenSharing)
                 renderAudioAccess(column, state.status, onStartAudioAccess)
+                renderApplicationManagement(column, state.status, onStartApplicationManagement)
             }
         }
         root.addView(ScrollView(root.context).apply { addView(column) })
@@ -201,6 +203,25 @@ class DeviceManagementScreen(
                 else "Audio access requires an enrolled, non-revoked device with an active communication session.",
             ),
         )
+    }
+
+    private fun renderApplicationManagement(
+        column: LinearLayout,
+        status: ManagedDeviceStatus,
+        onStart: (ManagedDeviceStatus) -> Unit,
+    ) {
+        column.addView(section("Application management"))
+        val eligible = status.enrollmentState == com.parento.admin.domain.EnrollmentState.ENROLLED &&
+            status.deviceStatus != com.parento.admin.domain.DeviceStatus.REVOKED
+        column.addView(button(if (eligible) "Open application management" else "Application management unavailable") {
+            onStart(status)
+        }.apply {
+            isEnabled = eligible && BuildConfig.PARENTO_FEATURE_APPLICATION_MANAGEMENT
+        })
+        column.addView(text(
+            if (eligible) "View inventory, configure ALLOW/BLOCK policy, and inspect synchronization state."
+            else "Application management requires an enrolled, non-revoked device."
+        ))
     }
 
     private fun deviceCard(device: ManagedDeviceStatus, onClick: () -> Unit): LinearLayout =

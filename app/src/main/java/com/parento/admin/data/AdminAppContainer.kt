@@ -14,6 +14,7 @@ import com.parento.admin.screensharing.ScreenSharingRepository
 import com.parento.admin.audio.AudioAccessRepository
 import com.parento.admin.audio.AudioTransport
 import com.parento.admin.audio.UnavailableAudioTransport
+import com.parento.admin.application.ApplicationManagementRepository
 
 class AdminAppContainer(context: Context) : AutoCloseable {
     private val applicationContext = context.applicationContext
@@ -53,6 +54,10 @@ class AdminAppContainer(context: Context) : AutoCloseable {
 
     val managedDeviceRepository: ManagedDeviceRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         ManagedDeviceRepositoryImpl(adminBackendApiClient)
+    }
+
+    val applicationManagementRepository: ApplicationManagementRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        ApplicationManagementRepositoryImpl(adminBackendApiClient)
     }
 
     val audioAccessRepository: AudioAccessRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {

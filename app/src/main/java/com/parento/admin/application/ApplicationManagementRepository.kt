@@ -11,6 +11,7 @@ interface ApplicationManagementRepository {
     suspend fun createPolicy(name: String, description: String?, rules: List<ApplicationPolicyRule>): OperationResult<ApplicationPolicy>
     suspend fun updatePolicy(policy: ApplicationPolicy, expectedVersion: Int): OperationResult<ApplicationPolicy>
     suspend fun getPolicyState(deviceId: String): OperationResult<ApplicationPolicyState>
+    suspend fun getEnforcementStatus(deviceId: String): OperationResult<ApplicationSynchronization?>
     suspend fun assignPolicy(deviceId: String, policyId: String): OperationResult<ApplicationPolicyState>
     suspend fun removePolicy(deviceId: String, policyId: String): OperationResult<ApplicationPolicyState>
     suspend fun syncPolicy(deviceId: String): OperationResult<ApplicationSynchronization?>

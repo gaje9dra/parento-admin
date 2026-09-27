@@ -98,6 +98,7 @@ class NetworkPolicyViewModel(
     }
 
     fun update(policy: NetworkPolicy) {
+        val previous = _detail.value as? NetworkPolicyDetailUiState.Content
         val normalized = NetworkPolicyValidator.normalizeRules(policy.rules) ?: run {
             _detail.value = NetworkPolicyDetailUiState.Error("One or more policy rules are invalid or duplicated.")
             return
@@ -106,8 +107,12 @@ class NetworkPolicyViewModel(
         viewModelScope.launch {
             when (val r = repository.updatePolicy(policy.copy(rules = normalized))) {
                 is OperationResult.Success -> {
-                    val current = _detail.value as? NetworkPolicyDetailUiState.Content
-                    _detail.value = NetworkPolicyDetailUiState.Content(r.value, current?.deviceState, current?.selectedDeviceId, devices = current?.devices.orEmpty())
+                    _detail.value = NetworkPolicyDetailUiState.Content(
+                        r.value,
+                        previous?.deviceState,
+                        previous?.selectedDeviceId,
+                        devices = previous?.devices.orEmpty(),
+                    )
                     loadPolicies(refresh = true)
                 }
                 is OperationResult.Failure -> handleFailure(r.error)

@@ -58,6 +58,17 @@ class NetworkPolicyViewModel(
         }
     }
 
+    fun startCreate() {
+        _detail.value = NetworkPolicyDetailUiState.Content(
+            policy = NetworkPolicy(
+                id = "", adminId = "", name = "", description = null,
+                status = NetworkPolicyStatus.ACTIVE, version = 0L,
+                createdAt = "", updatedAt = "", createdBy = "", updatedBy = "",
+                rules = emptyList(),
+            ),
+        )
+    }
+
     fun open(policyId: String) {
         _detail.value = NetworkPolicyDetailUiState.Loading
         viewModelScope.launch {

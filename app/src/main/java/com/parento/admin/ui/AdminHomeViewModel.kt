@@ -92,6 +92,8 @@ class AdminHomeViewModel(
         is AdminError.DeviceNotFound -> "The requested device could not be found."
         AdminError.Policy -> "The policy operation could not be completed."
         AdminError.Backend -> "The management service is temporarily unavailable."
+        AdminError.RateLimited -> "Too many requests. Please wait and try again."
+        AdminError.ResourceGone -> "The requested resource is no longer available."
         AdminError.LocalStorage -> "Local application data could not be read."
         AdminError.InvalidState -> "The requested local state transition is not valid."
         AdminError.Unknown -> "Something went wrong. Please try again."

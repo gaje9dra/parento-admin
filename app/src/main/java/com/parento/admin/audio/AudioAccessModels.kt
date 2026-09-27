@@ -9,6 +9,14 @@ enum class AudioPlaybackState {
     IDLE, LOADING, CONNECTING, PLAYING, STOPPING, ERROR
 }
 
+enum class AudioTransportState {
+    UNAVAILABLE,
+    CONNECTING,
+    ACTIVE,
+    DISCONNECTED,
+    ERROR,
+}
+
 data class AudioAccessSession(
     val sessionId: String,
     val managedDeviceId: String,
@@ -21,7 +29,7 @@ data class AudioAccessSession(
     val lastActivityAt: String,
     val terminationReason: String?,
     val correlationId: String,
-    val transportState: Map<String, String> = emptyMap(),
+    val transportState: AudioTransportState = AudioTransportState.UNAVAILABLE,
 )
 
 data class AudioAvailability(
@@ -31,4 +39,4 @@ data class AudioAvailability(
 
 fun AudioAccessSession.isPlaybackEligible(): Boolean =
     status == AudioAccessSessionStatus.ACTIVE &&
-        transportState["state"]?.uppercase() == "ACTIVE"
+        transportState == AudioTransportState.ACTIVE

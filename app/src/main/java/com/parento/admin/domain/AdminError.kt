@@ -21,6 +21,8 @@ sealed interface AdminError {
     data class DeviceNotFound(val deviceId: String) : AdminError
     data object Policy : AdminError
     data object Backend : AdminError
+    data object RateLimited : AdminError
+    data object ResourceGone : AdminError
     data object LocalStorage : AdminError
     data object InvalidState : AdminError
     data object Unknown : AdminError

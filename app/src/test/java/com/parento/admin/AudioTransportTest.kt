@@ -1,7 +1,10 @@
 package com.parento.admin
 
 import com.parento.admin.audio.AudioPlaybackState
+import com.parento.admin.audio.AudioTransportContext
+import com.parento.admin.audio.AudioTransportState
 import com.parento.admin.audio.UnavailableAudioTransport
+import com.parento.admin.domain.AdminError
 import com.parento.admin.domain.OperationResult
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -13,12 +16,42 @@ class AudioTransportTest {
     fun unavailableTransportFailsClosed() = runTest {
         val transport = UnavailableAudioTransport()
         val result = transport.connect(
-            managedDeviceId = "device-1",
-            audioSessionId = "session-1",
-            transportState = mapOf("state" to "ACTIVE"),
+            context = AudioTransportContext(
+                managedDeviceId = "device-1",
+                audioSessionId = "session-1",
+            ),
+            transportState = AudioTransportState.ACTIVE,
         )
         assertTrue(result is OperationResult.Failure)
         assertEquals(AudioPlaybackState.ERROR, transport.state)
+    }
+
+    @Test
+    fun transportRejectsMissingSessionBinding() = runTest {
+        val transport = UnavailableAudioTransport()
+        val result = transport.connect(
+            context = AudioTransportContext(
+                managedDeviceId = "",
+                audioSessionId = "session-1",
+            ),
+            transportState = AudioTransportState.ACTIVE,
+        )
+        assertTrue(result is OperationResult.Failure)
+        assertEquals(AdminError.Validation, (result as OperationResult.Failure).error)
+    }
+
+    @Test
+    fun transportRejectsNonActiveSessionState() = runTest {
+        val transport = UnavailableAudioTransport()
+        val result = transport.connect(
+            context = AudioTransportContext(
+                managedDeviceId = "device-1",
+                audioSessionId = "session-1",
+            ),
+            transportState = AudioTransportState.DISCONNECTED,
+        )
+        assertTrue(result is OperationResult.Failure)
+        assertEquals(AdminError.InvalidState, (result as OperationResult.Failure).error)
     }
 
     @Test

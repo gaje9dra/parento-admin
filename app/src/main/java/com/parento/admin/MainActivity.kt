@@ -212,6 +212,7 @@ class MainActivity : AppCompatActivity() {
         if (hasCompletedInitialStart) {
             authViewModel.validateCurrentSession()
             screenSharingViewModel.onForeground()
+            audioAccessViewModel.onForeground()
         } else {
             hasCompletedInitialStart = true
         }
@@ -391,6 +392,11 @@ class MainActivity : AppCompatActivity() {
             AudioAccessScreen(
                 root = frame,
                 viewModel = audioAccessViewModel,
+                onBack = {
+                    audioAccessViewModel.clearDevice()
+                    navigator.navigate(AdminDestination.DEVICES)
+                    renderDeviceDetailIfSelected()
+                },
             ).render(audioAccessViewModel.uiState.value, deviceViewModel.currentSelectedDeviceStatus())
         })
     }

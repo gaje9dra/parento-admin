@@ -1,10 +1,14 @@
 package com.parento.admin.application
 
+import com.parento.admin.device.CommandStatus
+
 enum class InventoryFreshness { FRESH, STALE, VERY_STALE, NEVER_REPORTED, DISCONNECTED, REVOKED, UNKNOWN }
 
 enum class PolicyStatus { ACTIVE, DISABLED }
 enum class PolicyAction { ALLOW, BLOCK }
-enum class EnforcementStatus { UNKNOWN, PENDING, APPLIED, PARTIALLY_APPLIED, FAILED, STALE }
+enum class EnforcementStatus {
+    UNKNOWN, PENDING, APPLIED, PARTIALLY_APPLIED, FAILED, UNSUPPORTED, STALE, REVOKED
+}
 
 data class ApplicationInventoryItem(
     val deviceId: String,
@@ -18,6 +22,7 @@ data class ApplicationInventoryItem(
     val receivedAt: String?,
     val freshness: InventoryFreshness,
     val policyAction: PolicyAction? = null,
+    val reportedPolicyAction: PolicyAction? = null,
     val enforcementStatus: EnforcementStatus = EnforcementStatus.UNKNOWN,
 )
 
@@ -56,6 +61,18 @@ data class PolicyAssignment(
     val updatedAt: String?,
 )
 
+data class ApplicationManagementCommand(
+    val id: String,
+    val type: String,
+    val status: CommandStatus,
+    val createdAt: String?,
+    val deliveryAt: String?,
+    val acknowledgedAt: String?,
+    val completedAt: String?,
+    val failureCode: String?,
+    val errorCategory: String?,
+)
+
 data class ApplicationSynchronization(
     val desiredPolicyId: String?,
     val desiredPolicyVersion: Int?,
@@ -66,6 +83,7 @@ data class ApplicationSynchronization(
     val lastReportedAt: String?,
     val updatedAt: String?,
     val errorCode: String?,
+    val command: ApplicationManagementCommand? = null,
 )
 
 data class ApplicationPolicyState(

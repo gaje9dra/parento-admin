@@ -123,7 +123,7 @@ class NetworkPolicyViewModel(
         val policy = (_detail.value as? NetworkPolicyDetailUiState.Content)?.policy ?: return
         viewModelScope.launch {
             when (val r = repository.removePolicy(deviceId, policy.id)) {
-                is OperationResult.Success -> _detail.value = (_detail.value as NetworkPolicyDetailDetailState.Content).copy(deviceState = r.value, selectedDeviceId = deviceId, message = "Assignment removed. Enforcement is confirmed separately.")
+                is OperationResult.Success -> _detail.value = (_detail.value as NetworkPolicyDetailUiState.Content).copy(deviceState = r.value, selectedDeviceId = deviceId, message = "Assignment removed. Enforcement is confirmed separately.")
                 is OperationResult.Failure -> handleFailure(r.error)
             }
         }
@@ -155,6 +155,7 @@ class NetworkPolicyViewModel(
         AdminError.Timeout -> "The request timed out. Retry when connectivity is restored."
         AdminError.Validation -> "The request was rejected as invalid."
         AdminError.ServerUnavailable -> "Parento server is temporarily unavailable."
+        AdminError.RateLimited -> "Too many requests. Please wait and retry."
         else -> "Network policy data is currently unavailable."
     }
 }

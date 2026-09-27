@@ -115,7 +115,32 @@ class NetworkPolicyViewModel(
                     )
                     loadPolicies(refresh = true)
                 }
-                is OperationResult.Failure -> handleFailure(r.error)
+                is OperationResult.Failure -> {
+                    if (r.error is AdminError.InvalidState) {
+                        reloadAfterConflict(policy.id, "The policy changed on the server. Authoritative state was reloaded; review it before retrying.")
+                    } else {
+                        handleFailure(r.error)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun reloadAfterConflict(policyId: String, message: String) {
+        viewModelScope.launch {
+            when (val refreshed = repository.getPolicy(policyId)) {
+                is OperationResult.Success -> {
+                    val current = _detail.value as? NetworkPolicyDetailUiState.Content
+                    _detail.value = NetworkPolicyDetailUiState.Content(
+                        policy = refreshed.value,
+                        deviceState = current?.deviceState,
+                        selectedDeviceId = current?.selectedDeviceId,
+                        stale = false,
+                        message = message,
+                        devices = current?.devices.orEmpty(),
+                    )
+                }
+                is OperationResult.Failure -> handleFailure(refreshed.error)
             }
         }
     }

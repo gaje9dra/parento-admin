@@ -3,6 +3,7 @@ package com.parento.admin.domain
 sealed interface AdminError {
     data object Authentication : AdminError
     data object Authorization : AdminError
+    data object RateLimited : AdminError
     data object Network : AdminError
     data object Timeout : AdminError
     data object InvalidCredentials : AdminError
@@ -19,6 +20,7 @@ sealed interface AdminError {
     data object EnrollmentAlreadyConsumed : AdminError
     data object EnrollmentRateLimited : AdminError
     data class DeviceNotFound(val deviceId: String) : AdminError
+    data class DeviceRevoked(val deviceId: String) : AdminError
     data object Policy : AdminError
     data object Backend : AdminError
     data object LocalStorage : AdminError

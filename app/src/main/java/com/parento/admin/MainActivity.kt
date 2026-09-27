@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.MenuItem
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.graphics.Color
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
@@ -94,17 +95,22 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.setBackgroundDrawableResource(android.R.color.white)
         if (!BuildConfig.DEBUG) {
             window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
         }
 
-        val root = FrameLayout(this)
+        val root = FrameLayout(this).apply {
+            setBackgroundColor(Color.WHITE)
+        }
         val column = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
         }
 
         toolbar = MaterialToolbar(this).apply {
             title = getString(R.string.app_name)
+            setBackgroundColor(Color.WHITE)
+            setTitleTextColor(Color.BLACK)
         }
         contentRoot = FrameLayout(this)
 

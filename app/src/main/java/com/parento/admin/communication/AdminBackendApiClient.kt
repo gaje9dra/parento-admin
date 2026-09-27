@@ -201,7 +201,7 @@ class AdminBackendApiClient(
 
     suspend fun listApplicationInventory(deviceId: String, cursor: String? = null): OperationResult<com.parento.admin.application.ApplicationInventoryPage> {
         val path = buildString {
-            append("/api/v1/admin/devices/").append(deviceId).append("/applications?limit=100")
+            append("/api/v1/admin/devices/").append(encodePathSegment(deviceId)).append("/applications?limit=100")
             if (!cursor.isNullOrBlank()) append("&cursor=").append(java.net.URLEncoder.encode(cursor, "UTF-8"))
         }
         return execute("GET", path) { root ->
@@ -222,6 +222,9 @@ class AdminBackendApiClient(
                         observedAt = nullableString(data, "observedAt"),
                         receivedAt = nullableString(data, "receivedAt"),
                         freshness = freshness,
+                        policyAction = nullablePolicyAction(item, "desiredAction"),
+                        reportedPolicyAction = nullablePolicyAction(item, "reportedAction"),
+                        enforcementStatus = enforcementStatus(item.optString("enforcementStatus", "UNKNOWN")),
                     ))
                 }
             }
@@ -230,7 +233,7 @@ class AdminBackendApiClient(
     }
 
     suspend fun getApplicationInventoryItem(deviceId: String, packageName: String): OperationResult<com.parento.admin.application.ApplicationInventoryItem> =
-        execute("GET", "/api/v1/admin/devices/" + deviceId + "/applications/" + java.net.URLEncoder.encode(packageName, "UTF-8")) { root ->
+        execute("GET", "/api/v1/admin/devices/" + encodePathSegment(deviceId) + "/applications/" + encodePathSegment(packageName)) { root ->
             val item = root.getJSONObject("data").getJSONObject("application")
             com.parento.admin.application.ApplicationInventoryItem(
                 deviceId = deviceId,
@@ -242,13 +245,16 @@ class AdminBackendApiClient(
                 enabled = if (item.has("enabled") && !item.isNull("enabled")) item.getBoolean("enabled") else null,
                 observedAt = nullableString(item, "lastObservedAt"),
                 receivedAt = nullableString(item, "lastReceivedAt"),
-                freshness = com.parento.admin.application.InventoryFreshness.UNKNOWN,
+                freshness = inventoryFreshness(item.optString("freshness", "UNKNOWN")),
+                policyAction = nullablePolicyAction(item, "desiredAction"),
+                reportedPolicyAction = nullablePolicyAction(item, "reportedAction"),
+                enforcementStatus = enforcementStatus(item.optString("enforcementStatus", "UNKNOWN")),
             )
         }
 
-    suspend fun requestApplicationInventory(deviceId: String): OperationResult<String> =
-        execute("POST", "/api/v1/admin/devices/" + deviceId + "/applications/inventory/request") { root ->
-            root.getJSONObject("data").getJSONObject("command").getString("id")
+    suspend fun requestApplicationInventory(deviceId: String): OperationResult<com.parento.admin.application.ApplicationManagementCommand> =
+        execute("POST", "/api/v1/admin/devices/" + encodePathSegment(deviceId) + "/applications/inventory/request") { root ->
+            parseApplicationCommand(root.getJSONObject("data").getJSONObject("command"))
         }
 
     suspend fun listApplicationPolicies(cursor: String? = null): OperationResult<Pair<List<com.parento.admin.application.ApplicationPolicy>, String?>> {
@@ -266,7 +272,7 @@ class AdminBackendApiClient(
     }
 
     suspend fun getApplicationPolicy(policyId: String): OperationResult<com.parento.admin.application.ApplicationPolicy> =
-        execute("GET", "/api/v1/admin/application-policies/" + policyId) { root ->
+        execute("GET", "/api/v1/admin/application-policies/" + encodePathSegment(policyId)) { root ->
             parseApplicationPolicy(root.getJSONObject("data").getJSONObject("policy"))
         }
 
@@ -278,7 +284,7 @@ class AdminBackendApiClient(
         }.toString()) { root -> parseApplicationPolicy(root.getJSONObject("data").getJSONObject("policy")) }
 
     suspend fun updateApplicationPolicy(policy: com.parento.admin.application.ApplicationPolicy, expectedVersion: Int): OperationResult<com.parento.admin.application.ApplicationPolicy> =
-        execute("PATCH", "/api/v1/admin/application-policies/" + policy.id, JSONObject().apply {
+        execute("PATCH", "/api/v1/admin/application-policies/" + encodePathSegment(policy.id), JSONObject().apply {
             put("name", policy.name)
             if (policy.description == null) put("description", JSONObject.NULL) else put("description", policy.description)
             put("status", policy.status.name)
@@ -287,21 +293,21 @@ class AdminBackendApiClient(
         }.toString()) { root -> parseApplicationPolicy(root.getJSONObject("data").getJSONObject("policy")) }
 
     suspend fun getApplicationPolicyState(deviceId: String): OperationResult<com.parento.admin.application.ApplicationPolicyState> =
-        execute("GET", "/api/v1/admin/devices/" + deviceId + "/application-policy") { root -> parseApplicationPolicyState(root.getJSONObject("data")) }
+        execute("GET", "/api/v1/admin/devices/" + encodePathSegment(deviceId) + "/application-policy") { root -> parseApplicationPolicyState(root.getJSONObject("data")) }
 
     suspend fun assignApplicationPolicy(deviceId: String, policyId: String): OperationResult<com.parento.admin.application.ApplicationPolicyState> =
-        execute("POST", "/api/v1/admin/devices/" + deviceId + "/application-policy", JSONObject().put("policyId", policyId).toString()) { root -> parseApplicationPolicyState(root.getJSONObject("data")) }
+        execute("POST", "/api/v1/admin/devices/" + encodePathSegment(deviceId) + "/application-policy", JSONObject().put("policyId", policyId).toString()) { root -> parseApplicationPolicyState(root.getJSONObject("data")) }
 
     suspend fun removeApplicationPolicy(deviceId: String, policyId: String): OperationResult<com.parento.admin.application.ApplicationPolicyState> =
-        execute("DELETE", "/api/v1/admin/devices/" + deviceId + "/application-policy", JSONObject().put("policyId", policyId).toString()) { root -> parseApplicationPolicyState(root.getJSONObject("data")) }
+        execute("DELETE", "/api/v1/admin/devices/" + encodePathSegment(deviceId) + "/application-policy", JSONObject().put("policyId", policyId).toString()) { root -> parseApplicationPolicyState(root.getJSONObject("data")) }
 
     suspend fun syncApplicationPolicy(deviceId: String): OperationResult<com.parento.admin.application.ApplicationSynchronization?> =
-        execute("POST", "/api/v1/admin/devices/" + deviceId + "/application-policy/sync") { root ->
+        execute("POST", "/api/v1/admin/devices/" + encodePathSegment(deviceId) + "/application-policy/sync") { root ->
             parseSynchronization(root.getJSONObject("data").optJSONObject("synchronization"))
         }
 
     suspend fun getApplicationEnforcementStatus(deviceId: String): OperationResult<com.parento.admin.application.ApplicationSynchronization?> =
-        execute("GET", "/api/v1/admin/devices/" + deviceId + "/application-policy/status") { root ->
+        execute("GET", "/api/v1/admin/devices/" + encodePathSegment(deviceId) + "/application-policy/status") { root ->
             parseSynchronization(root.getJSONObject("data").optJSONObject("synchronization"))
         }
 
@@ -349,13 +355,36 @@ class AdminBackendApiClient(
                 desiredPolicyVersion = if (it.has("desiredPolicyVersion") && !it.isNull("desiredPolicyVersion")) it.getInt("desiredPolicyVersion") else null,
                 reportedPolicyId = nullableString(it, "reportedPolicyId"),
                 reportedPolicyVersion = if (it.has("reportedPolicyVersion") && !it.isNull("reportedPolicyVersion")) it.getInt("reportedPolicyVersion") else null,
-                status = com.parento.admin.application.EnforcementStatus.valueOf(it.optString("status", "UNKNOWN")),
+                status = enforcementStatus(it.optString("status", "UNKNOWN")),
+                command = it.optJSONObject("command")?.let(::parseApplicationCommand),
                 lastRequestedAt = nullableString(it, "lastRequestedAt"),
                 lastReportedAt = nullableString(it, "lastReportedAt"),
                 updatedAt = nullableString(it, "updatedAt"),
                 errorCode = nullableString(it, "errorCode"),
             )
         }
+
+    private fun parseApplicationCommand(json: JSONObject): com.parento.admin.application.ApplicationManagementCommand =
+        com.parento.admin.application.ApplicationManagementCommand(
+            id = json.getString("id"),
+            type = json.optString("type", "UNKNOWN"),
+            status = runCatching {
+                com.parento.admin.device.CommandStatus.valueOf(json.optString("status", ""))
+            }.getOrDefault(com.parento.admin.device.CommandStatus.FAILED),
+            createdAt = nullableString(json, "createdAt"),
+            deliveryAt = nullableString(json, "deliveryAt"),
+            acknowledgedAt = nullableString(json, "acknowledgedAt"),
+            completedAt = nullableString(json, "completedAt"),
+            failureCode = nullableString(json, "failureCode"),
+            errorCategory = nullableString(json, "errorCategory"),
+        )
+
+    private fun nullablePolicyAction(json: JSONObject, key: String): com.parento.admin.application.PolicyAction? =
+        runCatching { com.parento.admin.application.PolicyAction.valueOf(json.optString(key, "")) }.getOrNull()
+
+    private fun enforcementStatus(value: String) = runCatching {
+        com.parento.admin.application.EnforcementStatus.valueOf(value)
+    }.getOrDefault(com.parento.admin.application.EnforcementStatus.UNKNOWN)
 
     private fun inventoryFreshness(value: String) = when (value) {
         "FRESH" -> com.parento.admin.application.InventoryFreshness.FRESH
@@ -546,6 +575,8 @@ class AdminBackendApiClient(
             status == 404 && code == "DEVICE_NOT_FOUND" -> AdminError.DeviceNotFound("")
             status == 404 -> AdminError.Backend
             status == 409 -> AdminError.InvalidState
+            status == 410 -> AdminError.DeviceRevoked("")
+            status == 429 -> AdminError.RateLimited
             status >= 500 -> AdminError.ServerUnavailable
             status == 400 -> AdminError.Validation
             else -> AdminError.Backend
@@ -588,6 +619,9 @@ class AdminBackendApiClient(
         "NOT_MANAGED" -> ManagementMode.UNMANAGED
         else -> ManagementMode.UNKNOWN
     }
+
+    private fun encodePathSegment(value: String): String =
+        java.net.URLEncoder.encode(value, "UTF-8").replace("+", "%20")
 
     private fun nullableString(json: JSONObject, key: String): String? =
         json.optString(key).takeIf { it.isNotBlank() && it != "null" }

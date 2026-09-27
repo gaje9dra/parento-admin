@@ -67,9 +67,10 @@ class ApplicationManagementViewModel(
             val inventory = repository.getInventory(state.deviceId)
             val policies = repository.listPolicies()
             val policyState = repository.getPolicyState(state.deviceId)
+            val enforcement = repository.getEnforcementStatus(state.deviceId)
             if (requestGeneration != generation.get()) return@launch
 
-            val failure = listOf(inventory, policies, policyState)
+            val failure = listOf(inventory, policies, policyState, enforcement)
                 .filterIsInstance<OperationResult.Failure>()
                 .firstOrNull()
             if (failure != null) {
@@ -80,12 +81,16 @@ class ApplicationManagementViewModel(
             val inventorySuccess = inventory as OperationResult.Success
             val policiesSuccess = policies as OperationResult.Success
             val policyStateSuccess = policyState as OperationResult.Success
+            val enforcementSuccess = enforcement as OperationResult.Success
+            val mergedPolicyState = policyStateSuccess.value.copy(
+                synchronization = enforcementSuccess.value ?: policyStateSuccess.value.synchronization,
+            )
             _uiState.value = state.copy(
                 inventory = inventorySuccess.value,
                 inventoryNextCursor = inventorySuccess.value.nextCursor,
                 policies = policiesSuccess.value.first,
                 policyNextCursor = policiesSuccess.value.second,
-                policyState = policyStateSuccess.value,
+                policyState = mergedPolicyState,
                 loading = false,
                 connection = ApplicationDataConnectionState.LIVE,
                 message = null,

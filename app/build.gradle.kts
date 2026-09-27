@@ -37,7 +37,7 @@ android {
     buildTypes {
         getByName("debug") {
             buildConfigField("String", "PARENTO_ENVIRONMENT", "\"development\"")
-            buildConfigField("String", "PARENTO_BACKEND_BASE_URL", "\"https://dev-backend.example.invalid\"")
+            buildConfigField("String", "PARENTO_BACKEND_BASE_URL", "\"http://10.0.2.2:3000\"")
             buildConfigField("String", "PARENTO_LOG_LEVEL", "\"DEBUG\"")
             buildConfigField("boolean", "PARENTO_LOGGING_ENABLED", "true")
             buildConfigField("boolean", "PARENTO_REQUIRE_HTTPS", "false")

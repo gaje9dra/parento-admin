@@ -17,6 +17,7 @@ import com.parento.admin.auth.AuthenticationState
 import com.parento.admin.ui.AudioAccessViewModel
 import com.parento.admin.ui.AudioAccessViewModelFactory
 import com.parento.admin.ui.AudioAccessScreen
+import com.parento.admin.ui.ApplicationManagementScreen
 import com.parento.admin.location.DeviceLocationUseCase
 import com.parento.admin.navigation.AdminDestination
 import com.parento.admin.navigation.AdminNavigator
@@ -287,6 +288,7 @@ class MainActivity : AppCompatActivity() {
                 selectedLocationDeviceId = null
                 screenSharingViewModel.clearDevice()
                 audioAccessViewModel.handleAdminLogout()
+                applicationManagementViewModel.clear()
                 toolbar.title = getString(R.string.login_title)
                 contentRoot.removeAllViews()
                 contentRoot.addView(FrameLayout(this).also { frame ->

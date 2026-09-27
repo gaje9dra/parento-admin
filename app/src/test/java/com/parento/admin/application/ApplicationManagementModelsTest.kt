@@ -16,4 +16,11 @@ class ApplicationManagementModelsTest {
         assertFalse(validAndroidPackageName("com..example"))
         assertFalse(validAndroidPackageName("com.example app"))
     }
+
+    @Test fun enforcementStatesDoNotCollapseIntoBlockedBoolean() {
+        assertTrue(EnforcementStatus.PENDING != EnforcementStatus.APPLIED)
+        assertTrue(EnforcementStatus.FAILED != EnforcementStatus.APPLIED)
+        assertTrue(EnforcementStatus.UNSUPPORTED != EnforcementStatus.APPLIED)
+        assertTrue(EnforcementStatus.REVOKED != EnforcementStatus.APPLIED)
+    }
 }

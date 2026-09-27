@@ -1,6 +1,7 @@
 package com.parento.admin.policy
 
 object NetworkPolicyValidator {
+    const val MAX_RULES = 500
     fun normalizeDomain(value: String): String? {
         val trimmed = value.trim().lowercase()
         val wildcard = trimmed.startsWith("*.")
@@ -20,6 +21,7 @@ object NetworkPolicyValidator {
     }
 
     fun normalizeRules(rules: List<NetworkPolicyRule>): List<NetworkPolicyRule>? {
+        if (rules.size > MAX_RULES) return null
         val normalized = rules.mapNotNull { rule ->
             normalizeDomain(rule.domain)?.let { rule.copy(domain = it, validationError = null) }
         }

@@ -8,4 +8,5 @@ enum class AdminDestination {
     LOCATION,
     SCREEN_SHARING,
     AUDIO_ACCESS,
+    APPLICATION_MANAGEMENT,
 }

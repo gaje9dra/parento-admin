@@ -7,6 +7,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NetworkPolicyValidatorTest {
+    @Test
+    fun rejectsMoreThanBackendMaximumRules() {
+        val rules = (1..(NetworkPolicyValidator.MAX_RULES + 1)).map { index ->
+            NetworkPolicyRule(
+                id = null,
+                domain = "$index.example.com",
+                action = NetworkRuleAction.BLOCK,
+            )
+        }
+
+        assertNull(NetworkPolicyValidator.normalizeRules(rules))
+    }
+
     @Test fun normalizesExactAndWildcardDomains() {
         assertEquals("example.com", NetworkPolicyValidator.normalizeDomain(" Example.COM "))
         assertEquals("*.example.com", NetworkPolicyValidator.normalizeDomain("*.Example.COM"))

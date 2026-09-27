@@ -74,6 +74,7 @@ class AdminHomeViewModel(
     private fun errorMessage(error: AdminError): String = when (error) {
         AdminError.Authentication -> "Administrator authentication is unavailable."
         AdminError.Authorization -> "This action is not authorized."
+        AdminError.RateLimited -> "Too many requests. Please wait and try again."
         AdminError.Network -> "A network connection is unavailable."
         AdminError.Timeout -> "The request timed out. Please try again."
         AdminError.InvalidCredentials -> "Invalid email or password."
@@ -90,6 +91,7 @@ class AdminHomeViewModel(
         AdminError.EnrollmentRateLimited -> "Too many enrollment requests. Please wait and try again."
         AdminError.UnknownAuthentication -> "Authentication could not be completed."
         is AdminError.DeviceNotFound -> "The requested device could not be found."
+        is AdminError.DeviceRevoked -> "The requested device has been revoked."
         AdminError.Policy -> "The policy operation could not be completed."
         AdminError.Backend -> "The management service is temporarily unavailable."
         AdminError.LocalStorage -> "Local application data could not be read."

@@ -46,13 +46,14 @@ class NetworkPolicyViewModel(
 
     fun loadPolicies(refresh: Boolean = false) {
         if (!refresh && _list.value is NetworkPolicyListUiState.Content) return
-        _list.value = NetworkPolicyListUiState.Loading
+        val previous = _list.value
+        _list.value = if (previous is NetworkPolicyListUiState.Content) previous else NetworkPolicyListUiState.Loading
         viewModelScope.launch {
             when (val r = repository.listPolicies()) {
                 is OperationResult.Success -> _list.value = if (r.value.first.isEmpty()) NetworkPolicyListUiState.Empty else NetworkPolicyListUiState.Content(r.value.first, r.value.second)
                 is OperationResult.Failure -> {
                     if (r.error is AdminError.SessionExpired) onSessionExpired()
-                    _list.value = NetworkPolicyListUiState.Error(messageFor(r.error))
+                    _list.value = if (previous is NetworkPolicyListUiState.Content) previous.copy(stale = true) else NetworkPolicyListUiState.Error(messageFor(r.error))
                 }
             }
         }
@@ -74,7 +75,7 @@ class NetworkPolicyViewModel(
         viewModelScope.launch {
             when (val r = repository.getPolicy(policyId)) {
                 is OperationResult.Success -> _detail.value = NetworkPolicyDetailUiState.Content(r.value, devices = loadAuthorizedDevices())
-                is OperationResult.Failure -> handleFailure(r.error)
+                is OperationResult.Failure -> _detail.value = NetworkPolicyDetailUiState.Error(messageFor(r.error) + " Cached policy data is not authoritative.")
             }
         }
     }

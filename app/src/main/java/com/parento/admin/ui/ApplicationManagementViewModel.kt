@@ -73,6 +73,29 @@ class ApplicationManagementViewModel(
         }
     }
 
+    fun createPolicy(name: String, description: String?, rules: List<ApplicationPolicyRule>) {
+        val state = _uiState.value as? ApplicationManagementUiState.Content ?: return
+        viewModelScope.launch {
+            when (val result = repository.createPolicy(name, description, rules)) {
+                is OperationResult.Success -> _uiState.value = state.copy(policies = state.policies + result.value, message = "Policy created.")
+                is OperationResult.Failure -> handleFailure(result)
+            }
+        }
+    }
+
+    fun updatePolicy(policy: ApplicationPolicy, expectedVersion: Int) {
+        val state = _uiState.value as? ApplicationManagementUiState.Content ?: return
+        viewModelScope.launch {
+            when (val result = repository.updatePolicy(policy, expectedVersion)) {
+                is OperationResult.Success -> _uiState.value = state.copy(
+                    policies = state.policies.map { if (it.id == result.value.id) result.value else it },
+                    message = "Policy updated to v" + result.value.version + ".",
+                )
+                is OperationResult.Failure -> handleFailure(result)
+            }
+        }
+    }
+
     fun assignPolicy(policyId: String) {
         val state = _uiState.value as? ApplicationManagementUiState.Content ?: return
         viewModelScope.launch {

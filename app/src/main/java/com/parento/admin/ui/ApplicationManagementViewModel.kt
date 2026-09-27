@@ -43,6 +43,11 @@ class ApplicationManagementViewModel(
     val uiState: StateFlow<ApplicationManagementUiState> = _uiState
     private val generation = AtomicInteger(0)
 
+    fun clear() {
+        generation.incrementAndGet()
+        _uiState.value = ApplicationManagementUiState.Loading
+    }
+
     fun open(deviceId: String, deviceName: String) {
         generation.incrementAndGet()
         _uiState.value = ApplicationManagementUiState.Content(

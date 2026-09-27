@@ -53,7 +53,7 @@ class ApplicationManagementViewModel(
         _uiState.value = ApplicationManagementUiState.Content(
             deviceId = deviceId,
             deviceName = deviceName,
-            loading = true,
+            loading = false,
         )
         refresh()
     }

@@ -287,6 +287,7 @@ class MainActivity : AppCompatActivity() {
                 selectedLocationDeviceId = null
                 screenSharingViewModel.clearDevice()
                 audioAccessViewModel.handleAdminLogout()
+                applicationManagementViewModel.clear()
                 toolbar.title = getString(R.string.login_title)
                 contentRoot.removeAllViews()
                 contentRoot.addView(FrameLayout(this).also { frame ->
